@@ -1,10 +1,14 @@
 // renderer.js — canvas rendering engine
-import { getLineRegistry } from './pretext-bridge.js'
+import { getLineRegistry, getWordRegistry } from './pretext-bridge.js'
+import { stepPhysics, getBodyScreenPos, pruneOffscreenBodies } from './physics.js'
+import { updateRecovery } from './recovery.js'
 
 let canvas, ctx, dpr, width, height
 let registry = []
 let rafId = null
 let isRunning = false
+let lastTime = performance.now()
+let frameCount = 0
 
 export function initRenderer() {
   canvas = document.getElementById('main-canvas')
@@ -18,9 +22,8 @@ export function initRenderer() {
 
   // Fetch registry once — loop reads from module-level variable only
   registry = getLineRegistry()
-  if (!registry.length) throw new Error('[renderer] Line registry is empty')
 
-  // Hide DOM prose elements — renderer is now in control
+  // Hide UI elements handled by canvas
   document.querySelectorAll('.canvas-managed').forEach(el => {
     el.style.opacity = '0'
     el.style.pointerEvents = 'none'
@@ -35,7 +38,7 @@ export function initRenderer() {
 
   window.addEventListener('resize', onResize)
 
-  console.log('[renderer] Initialized.', registry.length, 'lines to render')
+  console.log('[renderer] Initialized.')
   isRunning = true
   rafId = requestAnimationFrame(renderLoop)
 }
@@ -58,37 +61,65 @@ function onResize() {
   rafId = requestAnimationFrame(renderLoop)
 }
 
-// ── SECTION 2 — Render loop ──────────────────────────────────────────────────
-
-function renderLoop() {
+function renderLoop(timestamp) {
   if (!isRunning) return
-  drawFrame()
+  drawFrame(timestamp)
   rafId = requestAnimationFrame(renderLoop)
 }
 
-function drawFrame() {
+function drawFrame(timestamp) {
+  const delta = Math.min(timestamp - lastTime, 50) || 16// cap at 50ms fallback to 60fps
+  lastTime = timestamp
+  frameCount++
+
+  // Step physics
+  stepPhysics(delta)
+  updateRecovery(timestamp, window.scrollY)
+
+  // Prune fallen bodies every 60 frames (approx 1s)
+  if (frameCount % 60 === 0) {
+    pruneOffscreenBodies(getWordRegistry())
+  }
+
   ctx.clearRect(0, 0, width, height)
-
   const scrollY = window.scrollY
+  const words = getWordRegistry()
 
-  for (const line of registry) {
-    if (line.isPhysics) continue // physics lines handled by physics.js later
+  for (const word of words) {
+    if (word.isPhysics) {
+      // Draw at physics body position
+      const pos = getBodyScreenPos(word, 0) // physics is in screen space
+      if (!pos) continue
 
-    const screenY = line.y - scrollY
+      // Cull bottom only
+      if (pos.y > height + 100) continue
 
-    // Cull lines outside viewport with buffer
-    if (screenY + line.lineHeight < -100 || screenY > height + 100) continue
+      ctx.save()
+      ctx.translate(
+        pos.x + word.width / 2,
+        pos.y + word.height / 2
+      )
+      ctx.rotate(pos.angle || 0)
+      ctx.font = word.fontString
+      ctx.fillStyle = word.color
+      ctx.textBaseline = 'alphabetic'
+      ctx.fillText(word.text, -word.width / 2, word.height * 0.6)
+      ctx.restore()
 
-    ctx.save()
-    ctx.font = line.fontString
-    ctx.fillStyle = line.color
-    ctx.textBaseline = 'alphabetic'
-    ctx.fillText(line.text, line.x, screenY + line.lineHeight * 0.8)
-    ctx.restore()
+    } else {
+      // Locked word — draw at layout position
+      const screenY = word.y - scrollY
+      if (screenY + word.lineHeight < -100 || screenY > height + 100) continue
+
+      ctx.save()
+      ctx.font = word.fontString
+      ctx.fillStyle = word.color
+      ctx.textBaseline = 'alphabetic'
+      ctx.fillText(word.text, word.x, screenY + word.lineHeight * 0.8)
+      ctx.restore()
+    }
   }
 }
-
-// ── SECTION 3 — Public API ───────────────────────────────────────────────────
 
 export function stopRenderer() {
   isRunning = false

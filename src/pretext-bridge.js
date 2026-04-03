@@ -32,6 +32,7 @@ const FONT_CONTEXTS = [
 
 let metricsCache = {}
 let lineRegistry = []
+let wordRegistry = []
 let ready = false
 
 export async function initPretext() {
@@ -167,7 +168,67 @@ function buildLineRegistry() {
   })
 
   lineRegistry = newRegistry
+  buildWordRegistry()
 }
+
+function buildWordRegistry() {
+  wordRegistry = []
+
+  // We need a temporary offscreen canvas to measure word widths
+  const measureCanvas = document.createElement('canvas')
+  const mCtx = measureCanvas.getContext('2d')
+
+  for (const line of lineRegistry) {
+    const words = line.text.trim().split(/\s+/)
+    let cursorX = line.x
+
+    mCtx.font = line.fontString
+
+    for (let i = 0; i < words.length; i++) {
+      const word = words[i]
+      const wordWidth = mCtx.measureText(word).width
+      const spaceWidth = i < words.length - 1
+        ? mCtx.measureText(' ').width
+        : 0
+
+      // Word-level overrides (e.g., italics/color for 'rush')
+      let wordFont = line.fontString
+      let wordColor = line.color
+
+      // Check for 'rush' (case insensitive, remove punctuation)
+      const cleanWord = word.replace(/[.,!?;:]/g, '').toLowerCase()
+      let buffer = 0
+      if (cleanWord === 'rush') {
+        wordColor = '#c8f060' // Green accent
+        wordFont = 'italic ' + line.fontString
+        buffer = 5 // Extra space for italics
+      }
+
+      wordRegistry.push({
+        id: `${line.id}-W${i}`,
+        text: word,
+        x: cursorX,
+        y: line.y,
+        width: wordWidth,
+        height: line.lineHeight * 0.75,
+        lineHeight: line.lineHeight,
+        fontString: wordFont,
+        color: wordColor,
+        sectionId: line.sectionId,
+        stabilityResistance: line.stabilityResistance,
+        isPhysics: false,
+        locked: true,
+        body: null
+      })
+
+      cursorX += wordWidth + spaceWidth + buffer
+    }
+  }
+
+  console.log('[pretext-bridge] Word registry:', wordRegistry.length, 'words')
+}
+
+export function getWordRegistry() { return wordRegistry }
 
 export function getLineRegistry() { return lineRegistry }
 export function getMetrics(contextId) { return metricsCache[contextId] }

@@ -9,6 +9,7 @@
   <link
     href="https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&family=DM+Mono:wght@300;400&family=Syne:wght@400;500;600&display=swap"
     rel="stylesheet">
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/matter-js/0.19.0/matter.min.js"></script>
   <link rel="stylesheet" href="styles/base.css">
 </head>
 
@@ -88,7 +89,8 @@
         <span class="hero-date">Apr 03, 2026</span>
         <span class="hero-readtime">7 min read</span>
       </div>
-      <h1 class="canvas-managed" data-prose="true" data-line-id="prose-001">You cannot <em>rush</em> the heavy weight of
+      <h1 class="canvas-managed" data-prose="true" data-line-id="prose-001">You cannot <span
+          style="color: var(--accent); font-style: italic;">rush</span> the heavy weight of
         true information.</h1>
       <p class="hero-lead canvas-managed" data-prose="true" data-line-id="prose-002">Digital speed promises clarity, but
         meaning requires friction. When we trade careful thought for instant signals, we accumulate facts while losing
@@ -339,6 +341,101 @@ export function InfiniteGrid() {
         <a href="https://www.linkedin.com/in/yashkaul777/" target="_blank">LinkedIn</a>
       </div>
     </footer>
+  </div>
+
+  <div id="recovery-dialog" style="
+    position: fixed;
+    inset: 0;
+    z-index: 150;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    pointer-events: none;
+    opacity: 0;
+    transition: opacity 0.5s ease;
+  ">
+    <!-- Backdrop blur -->
+    <div style="
+      position: absolute;
+      inset: 0;
+      background: rgba(12, 12, 12, 0.72);
+      backdrop-filter: blur(8px);
+      -webkit-backdrop-filter: blur(8px);
+      opacity: 0;
+      transition: opacity 0.5s ease;
+    "></div>
+
+    <!-- Dialog box -->
+    <div id="recovery-box" style="
+      position: relative;
+      border: 1px solid var(--border2);
+      background: var(--surface);
+      padding: 3rem 3.5rem;
+      max-width: 420px;
+      width: 90%;
+      border-radius: 4px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 2rem;
+      transform: translateY(12px);
+      opacity: 0;
+      transition: opacity 0.4s ease 0.35s, transform 0.5s cubic-bezier(0.16, 1, 0.3, 1) 0.35s;
+    ">
+      <p style="
+        font-family: var(--serif);
+        font-size: 1.55rem;
+        font-weight: 400;
+        color: var(--text);
+        text-align: center;
+        line-height: 1.4;
+        margin: 0;
+        letter-spacing: -0.01em;
+      ">Do you promise<br>to <em style="color: var(--accent); font-style: italic;">not rush</em>?</p>
+
+      <p style="
+        font-family: var(--mono);
+        font-size: 0.72rem;
+        color: var(--text-dim);
+        text-align: center;
+        letter-spacing: 0.08em;
+        text-transform: uppercase;
+        margin: 0;
+      ">the text will only return if you mean it</p>
+
+      <div style="display: flex; gap: 1rem; width: 100%;">
+        <button id="recovery-no" style="
+          flex: 1;
+          padding: 0.75rem 1rem;
+          font-family: var(--mono);
+          font-size: 0.78rem;
+          letter-spacing: 0.08em;
+          text-transform: uppercase;
+          background: transparent;
+          border: 1px solid var(--border2);
+          color: var(--text-muted);
+          border-radius: 3px;
+          cursor: pointer;
+          transition: all 0.2s ease;
+        ">I can't promise</button>
+
+        <button id="recovery-yes" style="
+          flex: 1;
+          padding: 0.75rem 1rem;
+          font-family: var(--mono);
+          font-size: 0.78rem;
+          letter-spacing: 0.08em;
+          text-transform: uppercase;
+          background: var(--accent);
+          border: 1px solid var(--accent);
+          color: #0c0c0c;
+          border-radius: 3px;
+          cursor: pointer;
+          font-weight: 600;
+          transition: all 0.2s ease;
+        ">I promise</button>
+      </div>
+    </div>
   </div>
 
   <canvas id="main-canvas" style="position: fixed; inset: 0; z-index: 50; pointer-events: none;"></canvas>
