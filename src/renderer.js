@@ -21,9 +21,17 @@ export function initRenderer() {
   if (!registry.length) throw new Error('[renderer] Line registry is empty')
 
   // Hide DOM prose elements — renderer is now in control
-  document.querySelectorAll('[data-prose="true"]').forEach(el => {
-    el.style.visibility = 'hidden'
+  document.querySelectorAll('.canvas-managed').forEach(el => {
+    el.style.opacity = '0'
+    el.style.pointerEvents = 'none'
   })
+  
+  // Position canvas correctly
+  canvas.style.position = 'fixed'
+  canvas.style.top = '0'
+  canvas.style.left = '0'
+  canvas.style.pointerEvents = 'none'
+  canvas.style.zIndex = '1'
 
   window.addEventListener('resize', onResize)
 

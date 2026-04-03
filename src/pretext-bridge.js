@@ -35,12 +35,24 @@ let lineRegistry = []
 let ready = false
 
 export async function initPretext() {
-  await document.fonts.ready
+  try {
+    await document.fonts.ready
+    console.log('[pretext-bridge] All fonts loaded')
 
-  for (const ctx of FONT_CONTEXTS) {
-    const fontString = `${ctx.style === 'italic' ? 'italic ' : ''}${ctx.weight} ${ctx.size}px "${ctx.family}"`
-    const prepared = await prepare(" ", fontString)
-    metricsCache[ctx.id] = { ...ctx, metrics: prepared.font }
+    for (const ctx of FONT_CONTEXTS) {
+      const fontString = `${ctx.style === 'italic' ? 'italic ' : ''}${ctx.weight} ${ctx.size}px "${ctx.family}"`
+      console.log('[pretext-bridge] Measuring font:', ctx.id)
+      const prepared = await prepare(" ", fontString)
+      
+      if (prepared && prepared.font) {
+        metricsCache[ctx.id] = { ...ctx, metrics: prepared.font }
+      } else {
+        console.warn(`[pretext-bridge] Fallback metrics for ${ctx.id}`)
+        metricsCache[ctx.id] = { ...ctx, metrics: { ascent: 0.8, descent: 0.2 } }
+      }
+    }
+  } catch (e) {
+    console.error('[pretext-bridge] Metric phase failure:', e)
   }
 
   // STEP 2: Build the line registry after metrics are ready
@@ -86,39 +98,61 @@ function buildLineRegistry() {
     else if (tagName === 'H3') lineHeight = 24
     if (el.classList.contains('hero-lead')) lineHeight = 28
 
-    // Determine font context & string
-    let fontString = '400 16px Syne' // default
+    // Determine font context & string. Avoid complex CSS fallbacks which crash the library.
+    let fontString = `400 ${Math.round(fontSize)}px "Syne"`
     if (tagName === 'H1' || tagName === 'H2') {
-      fontString = `400 ${fontSize}px "Instrument Serif"`
+      fontString = `400 ${Math.round(fontSize)}px "Instrument Serif"`
     }
 
-    // Special handling for H1 segments (EM italicization)
-    let prepared
-    if (tagName === 'H1') {
-      const segments = []
-      // Simple manual segmentation for <em> tags
-      const nodes = el.childNodes
-      nodes.forEach(node => {
-        if (node.nodeType === Node.TEXT_NODE) {
-          segments.push({ text: node.textContent, font: `400 ${fontSize}px "Instrument Serif"` })
-        } else if (node.tagName === 'EM') {
-          segments.push({ text: node.textContent, font: `italic 400 ${fontSize}px "Instrument Serif"` })
+    const textToMeasure = el.innerText || ''
+    
+    // Calculate EXACT bounds for this specific element, incorporating its specific grid/flex layout width
+    const rect = el.getBoundingClientRect()
+    const scrollY = window.scrollY || document.documentElement.scrollTop || 0
+    const elementTop = rect.top + scrollY
+    const elementLeft = rect.left
+    const exactWidth = el.clientWidth || rect.width
+
+    let lines = []
+    try {
+      const prepared = prepare(textToMeasure, fontString)
+      if (!prepared || !prepared.widths) throw new Error('Prepare failed')
+      const result = layoutWithLines(prepared, exactWidth, lineHeight)
+      lines = result.lines
+    } catch (e) {
+      console.warn('[pretext-bridge] Library layout failed, using robust Canvas tracking')
+      
+      // Zero-Crash Canvas Layout Engine
+      const canvas = document.createElement('canvas')
+      const ctx = canvas.getContext('2d')
+      ctx.font = fontString
+      
+      // Basic word wrap
+      const words = textToMeasure.split(/\s+/)
+      let currentLine = words[0] || ''
+      
+      for (let i = 1; i < words.length; i++) {
+        const word = words[i]
+        const width = ctx.measureText(currentLine + " " + word).width
+        
+        // If word fits, append it
+        if (width < exactWidth) {
+          currentLine += " " + word
+        } else {
+          // Wrap to next line
+          lines.push({ text: currentLine, width: ctx.measureText(currentLine).width })
+          currentLine = word
         }
-      })
-      prepared = prepareWithSegments(segments)
-    } else {
-      prepared = prepare(el.innerText, fontString)
+      }
+      lines.push({ text: currentLine, width: ctx.measureText(currentLine).width })
     }
-
-    const lines = layoutWithLines(prepared, containerWidth, lineHeight)
-    const elementTop = el.offsetTop
 
     lines.forEach((line, lineIndex) => {
       newRegistry.push({
         id: `${el.dataset.lineId}-L${lineIndex}`,
         text: line.text,
         width: line.width,
-        x: wrapperLeft,
+        x: elementLeft,
         y: elementTop + (lineIndex * lineHeight),
         lineHeight: lineHeight,
         fontString: fontString,
