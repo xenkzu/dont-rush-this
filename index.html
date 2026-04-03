@@ -1,0 +1,110 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Pretext Article Render</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;700&display=swap" rel="stylesheet">
+    <style>
+        body, html {
+            margin: 0;
+            padding: 0;
+            width: 100%;
+            height: 100%;
+            overflow: hidden;
+            background-color: black;
+            color: #f0ede8;
+            font-family: 'Inter', sans-serif;
+        }
+        canvas {
+            display: block;
+            width: 100vw;
+            height: 100vh;
+        }
+    </style>
+</head>
+<body>
+    <canvas id="mainCanvas"></canvas>
+
+    <script type="module">
+        import { prepareWithSegments, layoutWithLines } from 'https://esm.sh/@chenglou/pretext';
+
+        const ARTICLE_TEXT = `The Cult of Instantaneous Irrelevance
+Why your news feed is a firehose that quenches no thirst.
+
+There is a peculiar modern arrogance that suggests we are more informed than our ancestors simply because we are updated more frequently. We treat information like a high-frequency trading algorithm, assuming that the person with the fastest connection to the "breaking" event is somehow the arbiter of its meaning. But information, much like a fine Bordeaux or a particularly stubborn stain, requires time to settle. You cannot rush it, though heaven knows we try our hardest to do so, refreshing our timelines with the frantic energy of a gambler waiting for the final cherry to lock into place.
+
+The firehose of modern data is not designed for comprehension; it is designed for engagement. Every "ping" is a micro-jolt of cortisol, a reminder that something significant might be happening, though it rarely is. We have traded the slow, deliberate work of understanding for the shallow, frantic work of knowing. To know that a thing happened is easy. To understand why it happened, and what its secondary effects might be, requires a quiet space that the digital world has spent two decades systematically dismantling. We have become a civilization of indexers, cataloging the "what" while the "why" drifts further out of reach.
+
+Consider the "breaking news" alert. It is the pinnacle of this absurdity. Most of the time, the alert informs us that something has occurred, but the details are "still coming in." We are effectively being told to wait, but to wait in a state of heightened anxiety. We are given the headline, but not the context. Without context, information is just noise. It is a series of data points that we lack the internal machinery to process. Yet, we devour it. We share it. We react to it. We take sides in arguments that haven't even finished their own introductory paragraphs. It is a performance of awareness, a masquerade where the mask is a blue-light screen.
+
+The sardonic truth of our age is that we are drowning in data but starving for wisdom. Wisdom is the product of reflection, and reflection is the enemy of the "next" button. The platforms we inhabit are built to prevent reflection at all costs. If you stop to think, you might stop scrolling. If you stop scrolling, the metrics drop. And so, the information must remain thin, fast, and relentlessly immediate. It must be processed with the speed of digestion in a fast-food restaurant—efficient, low-nutrient, and leaving you curiously empty an hour later. We are rushing toward a future where we know everything that happened five seconds ago, but have no idea what any of it means for the next five years.
+
+Perhaps it’s time to admit that we don’t actually need to know everything the moment it happens. The world will not collapse if we read about the morning’s catastrophe in the evening’s quiet. In fact, we might find that by the time we get to it, the "catastrophe" has been clarified, the facts have been checked, and the emotional weight of it has found its proper scale. To slow down is not to be ignorant; it is to be discerning. It is the radical act of refusing to be a transistor in someone else’s data-gathering machine. Until we learn that information is a slow-cooked meal, we will continue to suffer the indigestion of the instant.`;
+
+        let lineRecords = [];
+        const canvas = document.getElementById('mainCanvas');
+        const ctx = canvas.getContext('2d');
+
+        // Make lineRecords accessible from browser console
+        window.lineRecords = lineRecords;
+
+        function runPipeline() {
+            // Step 1 - Canvas Dimensions
+            canvas.width = window.innerWidth;
+            canvas.height = window.innerHeight;
+
+            // Step 3 - Pretext Layout
+            const prepared = prepareWithSegments(ARTICLE_TEXT, '12px Inter');
+            const COLUMN_WIDTH = canvas.width * 0.55;
+            const LINE_HEIGHT = 22;
+            const layout = layoutWithLines(prepared, COLUMN_WIDTH, LINE_HEIGHT);
+            
+            const MARGIN_TOP = 80;
+            lineRecords = layout.lines.map((line, i) => {
+                const naturalX = (canvas.width - COLUMN_WIDTH) / 2;
+                const naturalY = MARGIN_TOP + i * LINE_HEIGHT;
+                return { ...line, naturalX, naturalY };
+            });
+            window.lineRecords = lineRecords;
+        }
+
+        function render() {
+            // Step 4 - Canvas Render
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            
+            // Step 5 - Title Rendering
+            ctx.fillStyle = '#f0ede8';
+            ctx.font = '700 28px Inter';
+            ctx.textAlign = 'center';
+            // Title text taken from first line of ARTICLE_TEXT
+            ctx.fillText("The Cult of Instantaneous Irrelevance", canvas.width / 2, 44);
+            
+            // Body Rendering
+            ctx.textAlign = 'left';
+            ctx.font = '12px Inter';
+            lineRecords.forEach(record => {
+                ctx.fillText(record.text, record.naturalX, record.naturalY);
+            });
+
+            requestAnimationFrame(render);
+        }
+
+        async function init() {
+            await document.fonts.ready;
+            runPipeline();
+            render();
+            
+            // Step 1 - Resize Listener
+            window.addEventListener('resize', () => {
+                runPipeline();
+                // render is already calling itself via rAF
+            });
+        }
+
+        init();
+    </script>
+</body>
+</html>
