@@ -29,7 +29,9 @@ function stabilityLoop() {
     const maxTop = 120 - thumbHeight
     hudThumb.style.height = thumbHeight + 'px'
     hudThumb.style.top    = (scrollProgress * maxTop).toFixed(1) + 'px'
-    hudThumb.style.opacity = (0.5 + 0.5 * cubicOut(chaos)).toFixed(3)
+    
+    const opacity = Math.max(0.25, 0.25 + 0.75 * cubicOut(chaos))
+    hudThumb.style.opacity = opacity.toFixed(3)
     
     // Tint thumb white during recovery
     if (isRecoveringNow()) {
@@ -39,11 +41,21 @@ function stabilityLoop() {
     }
   }
 
-  if (hudLabel) {
-    hudLabel.textContent = getStabilityLabel()
-    const g = Math.round(cubicOut(chaos) * 255)
-    hudLabel.style.color = `rgb(${Math.round(200 * cubicOut(chaos))}, ${g}, ${Math.round(96 * cubicOut(chaos))})`
-  }
+    // Label — always visible, always current
+    if (hudLabel) {
+      hudLabel.textContent = getStabilityLabel()
+      hudLabel.style.opacity = '1'  // never hidden
+
+      // Color: dim at rest, accent-tinted during chaos
+      const chaosVal = cubicOut(chaos)
+      const chaosColor = `rgb(
+        ${Math.round(200 * chaosVal)},
+        ${Math.round(255 * chaosVal)},
+        ${Math.round(96  * chaosVal)}
+      )`
+      const restColor = 'var(--text-dim)'
+      hudLabel.style.color = chaos > 0.05 ? chaosColor : restColor
+    }
 
   if (hudInner) {
     const scale = 1 + 0.2 * cubicOut(chaos)

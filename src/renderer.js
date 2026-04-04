@@ -14,9 +14,7 @@ export function initRenderer() {
   canvas = document.getElementById('main-canvas')
   if (!canvas) throw new Error('[renderer] Canvas element not found')
 
-  dpr = window.devicePixelRatio || 1
   resize()
-
   ctx = canvas.getContext('2d')
   ctx.scale(dpr, dpr)
 
@@ -44,20 +42,25 @@ export function initRenderer() {
 }
 
 function resize() {
-  width = window.innerWidth
+  dpr = window.devicePixelRatio || 1
+  width  = window.innerWidth
   height = window.innerHeight
-  canvas.width = width * dpr
-  canvas.height = height * dpr
-  canvas.style.width = width + 'px'
+
+  // Physical pixel dimensions
+  canvas.width  = Math.round(width  * dpr)
+  canvas.height = Math.round(height * dpr)
+
+  // CSS dimensions stay logical
+  canvas.style.width  = width  + 'px'
   canvas.style.height = height + 'px'
 }
 
 function onResize() {
   cancelAnimationFrame(rafId)
-  ctx = null
   resize()
   ctx = canvas.getContext('2d')
   ctx.scale(dpr, dpr)
+  isRunning = true
   rafId = requestAnimationFrame(renderLoop)
 }
 
@@ -72,16 +75,13 @@ function drawFrame(timestamp) {
   lastTime = timestamp
   frameCount++
 
-  // Step physics
   stepPhysics(delta)
   updateRecovery(timestamp, window.scrollY)
 
-  // Prune fallen bodies every 60 frames (approx 1s)
-  if (frameCount % 60 === 0) {
-    pruneOffscreenBodies(getWordRegistry())
-  }
-
+  // Crisp subpixel rendering
   ctx.clearRect(0, 0, width, height)
+  ctx.imageSmoothingEnabled = false
+  ctx.textRendering = 'geometricPrecision'
   const scrollY = window.scrollY
   const words = getWordRegistry()
 

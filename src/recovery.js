@@ -31,10 +31,10 @@ function setGhostMode(body, isGhost) {
 }
 
 // ── Thresholds ─────────────────────────────────────────────
-const CALM_THRESHOLD   = 0.45   // stability must exceed this
-const CALM_DURATION_MS = 1500   // for this long before dialog appears
-const LOCK_DISTANCE    = 3.5
-const LOCK_VELOCITY    = 1.2
+const CALM_THRESHOLD   = 0.55   // was 0.45 — trigger specifically at dead body level
+const CALM_DURATION_MS = 1000   // was 1500 — appear 1s after reaching dead body state
+const LOCK_DISTANCE    = 0.8   // was 3.5 — only snap when nearly pixel-perfect
+const LOCK_VELOCITY    = 0.3   // was 1.2 — only snap when almost completely still
 
 // ── State ──────────────────────────────────────────────────
 let calmSince          = null
@@ -43,6 +43,7 @@ let recoveryGranted    = false
 let recoveryActive     = false
 let anyWordDetached    = false  // dialog only appears if chaos actually happened
 let recoveryComplete   = false  // gates new detachment after recovery
+let lastRecoveryScrollY = 0      // tracks delta to shift physics items
 
 // ── DOM refs ───────────────────────────────────────────────
 const getDialog   = () => document.getElementById('recovery-dialog')
@@ -76,12 +77,39 @@ function attachEvents() {
       const dx = targetX - word.body.position.x
       const dy = targetY - word.body.position.y
       const dist = Math.sqrt(dx * dx + dy * dy)
-      const speed = Math.min(dist * 0.12, 18)
+      const speed = Math.min(dist * 0.18, 28)
       const nx = dx / (dist || 1)
       const ny = dy / (dist || 1)
 
       Body.setVelocity(word.body, { x: nx * speed, y: ny * speed })
     }
+
+    lastRecoveryScrollY = window.scrollY
+
+    // Hard rescue after 5s — any word still stuck gets teleported
+    setTimeout(() => {
+      const currentWords = getWordRegistry()
+      const currentScrollY = window.scrollY
+      let rescued = 0
+
+      for (const word of currentWords) {
+        if (!word.isPhysics || !word.body) continue
+        
+        // Teleport to home
+        Body.setPosition(word.body, {
+          x: word.x + word.width / 2,
+          y: word.y - currentScrollY + word.lineHeight * 0.5
+        })
+        Body.setVelocity(word.body, { x: 0, y: 0 })
+        Body.setAngle(word.body, 0)
+        Body.setAngularVelocity(word.body, 0)
+        rescued++
+      }
+
+      if (rescued > 0) {
+        console.log(`[recovery] Hard rescued ${rescued} stuck words`)
+      }
+    }, 5000)
   })
 
   no.addEventListener('click', () => {
@@ -144,6 +172,24 @@ function hideDialog() {
 
 // ── Main update ────────────────────────────────────────────
 export function updateRecovery(timestamp, scrollY) {
+  // Detect scroll during recovery and shift all physics bodies
+  const currentScrollY = window.scrollY
+  const scrollDelta = currentScrollY - lastRecoveryScrollY
+  lastRecoveryScrollY = currentScrollY
+
+  if (recoveryActive && scrollDelta !== 0) {
+    const words = getWordRegistry()
+    for (const word of words) {
+      if (word.isPhysics && word.body) {
+        // Shift body up/down with the page scroll
+        Body.setPosition(word.body, {
+          x: word.body.position.x,
+          y: word.body.position.y - scrollDelta
+        })
+      }
+    }
+  }
+
   const si    = getStabilityIndex()
   const words = getWordRegistry()
 
@@ -190,30 +236,65 @@ export function updateRecovery(timestamp, scrollY) {
 
     const targetX = word.x + word.width / 2
     const targetY = word.y - scrollY + word.lineHeight * 0.5
-    const pos = word.body.position
-    const vel = word.body.velocity
-    const dx  = targetX - pos.x
-    const dy  = targetY - pos.y
-    const dist = Math.sqrt(dx * dx + dy * dy)
-    const speed = Math.sqrt(vel.x * vel.x + vel.y * vel.y)
 
+    const pos    = word.body.position
+    const vel    = word.body.velocity
+    const dx     = targetX - pos.x
+    const dy     = targetY - pos.y
+    const dist   = Math.sqrt(dx * dx + dy * dy)
+    const speed  = Math.sqrt(vel.x * vel.x + vel.y * vel.y)
+
+    // Snap only when truly home
     if (dist < LOCK_DISTANCE && speed < LOCK_VELOCITY) {
+      Body.setPosition(word.body, { x: targetX, y: targetY })
+      Body.setAngle(word.body, 0)
       World.remove(world, word.body)
       word.body      = null
       word.isPhysics = false
       word.locked    = true
-      word.pruned    = false // allow re-detach
+      word.pruned    = false
       continue
     }
 
-    const forceMag = Math.min(dist * 0.00018, 0.012)
     const nx = dx / (dist || 1)
     const ny = dy / (dist || 1)
 
-    Body.applyForce(word.body, pos, { x: nx * forceMag, y: ny * forceMag })
+    // Three zones — different behavior per zone
+    if (dist > 80) {
+      // ZONE 1: Far away — strong pull, light damping
+      const forceMag = dist * 0.00035
+      Body.applyForce(word.body, pos, { x: nx * forceMag, y: ny * forceMag })
+      Body.setVelocity(word.body, { x: vel.x * 0.90, y: vel.y * 0.90 })
 
-    Body.setVelocity(word.body, { x: vel.x * 0.75, y: vel.y * 0.75 })
-    Body.setAngularVelocity(word.body, word.body.angularVelocity * 0.70)
+    } else if (dist > 12) {
+      // ZONE 2: Mid range — moderate pull, heavier damping to begin braking
+      const forceMag = Math.max(dist * 0.00028, 0.008)
+      Body.applyForce(word.body, pos, { x: nx * forceMag, y: ny * forceMag })
+      Body.setVelocity(word.body, { x: vel.x * 0.82, y: vel.y * 0.82 })
+
+    } else {
+      // ZONE 3: Final approach — no more force, only heavy braking
+      // Let momentum carry it in, friction brings it to rest exactly on target
+      Body.setVelocity(word.body, { x: vel.x * 0.68, y: vel.y * 0.68 })
+    }
+
+    // Rescue: if stalled mid-flight, inject minimum velocity toward target
+    const expectedMinSpeed = Math.min(dist * 0.04, 3.5)
+    if (speed < expectedMinSpeed && dist > LOCK_DISTANCE) {
+      Body.setVelocity(word.body, {
+        x: nx * expectedMinSpeed,
+        y: ny * expectedMinSpeed
+      })
+    }
+
+    // Angle: smooth lerp toward 0 throughout all zones
+    const currentAngle   = word.body.angle
+    const angleDiff      = -currentAngle
+    const normalizedDiff = ((angleDiff + Math.PI) % (Math.PI * 2)) - Math.PI
+    // Lerp speed increases as word gets closer — faster correction near home
+    const angleLerpSpeed = dist > 40 ? 0.06 : 0.12
+    Body.setAngle(word.body, currentAngle + normalizedDiff * angleLerpSpeed)
+    Body.setAngularVelocity(word.body, word.body.angularVelocity * 0.85)
   }
 
   if (allLocked) {
