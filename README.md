@@ -7,44 +7,39 @@
 ![CSS3](https://img.shields.io/badge/Styling-CSS3-1572B6?logo=css3&logoColor=white)
 ![License](https://img.shields.io/badge/license-MIT-green)
 
-A high-fidelity implementation of physics-driven typography, architectural stability, and intentional friction. This project serves as a technical showcase for the **Pretext** library, exploring the visceral relationship between consumption speed and information integrity.
 
-## Core Architecture
+This project is an interactive implementation of the Pretext library. I built this website to experiment with physics-driven typography and to explore the idea that rushing through content should have visual consequences.
 
-### Stability and Chaos Engine
-The system implements a surgical asymmetric attack/decay curve to map user interaction to environmental stability. Rapid scrolling initiates an instantaneous transition into a high-chaos state, while recovery is governed by a viscous, spring-dampened 1D noise field. This architecture ensures that "rushing" has a physical consequence, requiring deliberate patience for the system to settle.
 
-### Stochastic Word Detachment
-To prevent a total and predictable collapse of the typographical grid, the detachment engine utilizes a 30% selective-decay filter. Even when the stability threshold is breached, the system selectively fragments only a minority subset of candidates per animation frame. This creates a more organic, "sometimes-not-everytime" decay pattern where meaning is lost in fragments rather than all at once.
 
-### The Lens of Patience
-A word-based interactive reveal system that explores the metabolic rate of truth. 
-*   **Stochastic Alignment**: Moving the cursor slowly over the scrambled word field triggers a high-precision snap to target coordinates. 
-*   **Organic Instability**: To resist mechanical perfection, words possess an internal "instability" property (20% chance of flicker). This ensures that even intentional focus requires careful, manual adjustment to fully clarify the hidden message: *"Meaning Requires Friction."*
+## Core Mechanics
 
-### Reactive Liquid HUD
-The Stability HUD features a spring-based vertical tracking system that maintains a physical link to the scroll progress thumb.
-*   **Metric Measurement**: A canvas-based metric engine calculates label widths in real-time, accounting for specific CSS letter-spacing and font-metrics before the browser paints.
-*   **Inversion Pipeline**: Utilizing `mix-blend-mode: difference`, the HUD text surgically inverts from accent green to deep black as the reactive fill opacity scales with chaos, maintaining absolute legibility under high-intensity feedback.
 
-### Physical Reconstruction
-The article is rendered as a registry of discrete physical bodies using Matter.js.
-*   **Sub-Surface Recovery**: To enable seamless reconstruction of text below the fold, the system implements a dynamic floor-shifting mechanism. During recovery, the physics boundary is dropped below the viewport, allowing detached words to traverse the boundary floor and reach their original coordinates.
-*   **Inertial Snapping**: Once a word returns to its "Ghost" DOM origin, it undergoes an inertial-zeroing process to ensure sub-pixel accuracy during the hand-off between the canvas renderer and the static browser layer.
 
----
+### Text Interaction and Falling
 
-## Technical: Pretext Integration
+The primary mechanic is tied directly to how you scroll. If you rush through the page, the environment destabilizes. The words detach from the grid and fall via a physics engine. It is a literal representation of losing meaning when you move too fast. To recover the text and read the article, you just have to stop. The words will pull themselves back into place once the chaos settles.
 
-This project is a primary implementation of the **Pretext** library, created by **[Cheng Lou (@chenglou)](https://github.com/chenglou)**.
 
-### Operational Methodology
-Pretext provides the foundation for layout-agnostic text measurement. By extracting raw font metrics (ascent, descent, precision widths) and performing deterministic layout calculations off-thread, the library allows this project to:
-1.  Establish a mathematical source-of-truth for typographical coordinates.
-2.  Enable a perfectly consistent "hand-over" between the Matter.js physics engine and the 2D canvas renderer.
-3.  Calculate wrapping and alignment without the latency or side-effects associated with traditional DOM-based measurement.
 
----
+### The Interactives (Signal & Lissajous)
+
+There are several interactive canvas components mixed in, like the Signal noise oscilloscope and the Lissajous harmonic curves. These share the same philosophy as the text layout. If you move your cursor violently or try to rush the interaction, the systems suffer from signal overrun. The mathematical patterns break down into frantic, high-velocity traces. Interacting deliberately and slowly is the only way to lock them back into clean shapes.
+
+
+
+## What I Learned Using Pretext
+
+
+
+Working with Pretext really shifted my perspective on web typography limitatons. 
+
+Normally, treating individual words as physical bodies requires reading layout data directly from the DOM. This causes layout thrashing and ruins performance when scaling up. 
+
+Pretext solves this by measuring text limits and bounds off the main thread. It gave me a mathematical source of truth for where every word belonged before the browser even painted them. This allowed the handover between the static typography and the Matter.js engine to be perfectly consistent and highly performant, no matter how many words were falling.
+
+
 
 ## License
-Licensed under the [MIT License](LICENSE).
+
+Licensed under the MIT License.
