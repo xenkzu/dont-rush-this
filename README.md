@@ -5,7 +5,6 @@
 ![Pretext](https://img.shields.io/badge/Layout-Pretext-blue?style=flat)
 ![HTML5](https://img.shields.io/badge/Markup-HTML5-E34F26?logo=html5&logoColor=white)
 ![CSS3](https://img.shields.io/badge/Styling-CSS3-1572B6?logo=css3&logoColor=white)
-![Canvas](https://img.shields.io/badge/Graphics-2D_Canvas-blue?style=flat)
 ![License](https://img.shields.io/badge/license-MIT-green)
 
 A high-fidelity implementation of physics-driven typography, architectural stability, and intentional friction. This project serves as a technical showcase for the **Pretext** library, exploring the visceral relationship between consumption speed and information integrity.
@@ -15,8 +14,13 @@ A high-fidelity implementation of physics-driven typography, architectural stabi
 ### Stability and Chaos Engine
 The system implements a surgical asymmetric attack/decay curve to map user interaction to environmental stability. Rapid scrolling initiates an instantaneous transition into a high-chaos state, while recovery is governed by a viscous, spring-dampened 1D noise field. This architecture ensures that "rushing" has a physical consequence, requiring deliberate patience for the system to settle.
 
-### The Signal Oscilloscope
-A real-time telemetry visualization driven by a hybrid deterministic-noise engine. The oscilloscope integrates multiple sine harmonics and a spring-based noise field to provide a high-fidelity visual representation of the current stability index. Users can interfere with the signal via high-frequency pointer inputs, triggering localized chaotic anomalies in the typographical grid.
+### Stochastic Word Detachment
+To prevent a total and predictable collapse of the typographical grid, the detachment engine utilizes a 30% selective-decay filter. Even when the stability threshold is breached, the system selectively fragments only a minority subset of candidates per animation frame. This creates a more organic, "sometimes-not-everytime" decay pattern where meaning is lost in fragments rather than all at once.
+
+### The Lens of Patience
+A word-based interactive reveal system that explores the metabolic rate of truth. 
+*   **Stochastic Alignment**: Moving the cursor slowly over the scrambled word field triggers a high-precision snap to target coordinates. 
+*   **Organic Instability**: To resist mechanical perfection, words possess an internal "instability" property (20% chance of flicker). This ensures that even intentional focus requires careful, manual adjustment to fully clarify the hidden message: *"Meaning Requires Friction."*
 
 ### Reactive Liquid HUD
 The Stability HUD features a spring-based vertical tracking system that maintains a physical link to the scroll progress thumb.
@@ -27,11 +31,6 @@ The Stability HUD features a spring-based vertical tracking system that maintain
 The article is rendered as a registry of discrete physical bodies using Matter.js.
 *   **Sub-Surface Recovery**: To enable seamless reconstruction of text below the fold, the system implements a dynamic floor-shifting mechanism. During recovery, the physics boundary is dropped below the viewport, allowing detached words to traverse the boundary floor and reach their original coordinates.
 *   **Inertial Snapping**: Once a word returns to its "Ghost" DOM origin, it undergoes an inertial-zeroing process to ensure sub-pixel accuracy during the hand-off between the canvas renderer and the static browser layer.
-
-### Narrative Reveal and Onboarding
-The onboarding sequence is designed to establish an atmospheric tone.
-*   **Atmospheric Bloom**: The preloader features a 2.2-second slow-decay transition, allowing the "The Signal" preloader to dissolve gracefully into the article content.
-*   **Gradient Masking**: A full-width bottom bar provides the "ACCELERATE TO DISRUPT" prompt, utilizing a linear-gradient mask to prevent article content overlap while maintaining high visual salience.
 
 ---
 

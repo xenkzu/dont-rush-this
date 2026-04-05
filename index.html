@@ -343,7 +343,7 @@
             pointer-events: none;
             z-index: 2;
           ">
-            <span id="signal-label">signal stable</span>
+            <span id="signal-label" style="color: rgba(200,240,96, 0.65);">signal stable</span>
           </div>
         </div>
 
@@ -480,7 +480,7 @@
               ctx.font = '9px "DM Mono", monospace'
               ctx.textBaseline = 'top'
               ctx.textAlign = 'right'
-              ctx.fillStyle = `rgba(180,230,80,${0.85 * clarity})`
+              ctx.fillStyle = `rgba(180,230,80,${0.85 * clarity + 0.15})`
               ctx.fillText(`CLR ${((1 - interference) * 100).toFixed(0).padStart(3, '0')}%`, W - 14, 14)
               ctx.fillText(`NZE ${(interference * 100).toFixed(0).padStart(3, '0')}%`, W - 14, 26)
               ctx.fillText(`FRQ 2.40kHz`, W - 14, 38)
@@ -748,52 +748,178 @@
         high-frequency noise. When we give it to the slow, we receive a clarity that acts as a compass in the chaotic
         modern landscape.</p>
 
-      <div class="code-block">
-        <div class="code-block-header">
-          <span class="code-block-lang">TypeScript</span>
-          <div class="code-block-dots">
-            <span class="dot dot-r"></span>
-            <span class="dot dot-y"></span>
-            <span class="dot dot-g"></span>
+      <div class="demo-section">
+        <div class="demo-header">
+          <span class="demo-label">Orbital Harmony</span>
+          <span class="demo-hint">interfere to disrupt</span>
+        </div>
+        <div id="orbital-wrap" style="
+          width: 100%;
+          height: 480px;
+          position: relative;
+          overflow: hidden;
+          background: #0c0c0c;
+          cursor: none;
+        ">
+          <canvas id="orbital-canvas" style="position:absolute;inset:0;width:100%;height:100%;"></canvas>
+          <div id="orbital-cursor"
+            style="position:absolute;width:4px;height:4px;border-radius:50%;background:#c8f060;pointer-events:none;transform:translate(-50%,-50%);opacity:0;box-shadow:0 0 6px 2px rgba(200,240,96,0.4);transition:opacity 0.3s;z-index:2;">
+          </div>
+          <div
+            style="position:absolute;bottom:14px;left:50%;transform:translateX(-50%);font-family:'DM Mono',monospace;font-size:9px;letter-spacing:0.12em;text-transform:uppercase;color:rgba(200,240,96,0.5);pointer-events:none;z-index:2;">
+            <span id="orbital-label">entropy: 0.000</span>
           </div>
         </div>
-        <pre><code><span class="kw">import</span> { <span class="ty">useRef</span>, <span class="ty">useEffect</span>, <span class="ty">useCallback</span> } <span class="kw">from</span> <span class="str">'react'</span>
-
-<span class="kw">type</span> <span class="ty">Vec2</span> = { x: <span class="ty">number</span>; y: <span class="ty">number</span> }
-
-<span class="kw">export function</span> <span class="fn">useInfiniteGrid</span>() {
-  <span class="kw">const</span> raw    = <span class="fn">useRef</span>&lt;<span class="ty">Vec2</span>&gt;({ x: <span class="nb">0</span>, y: <span class="nb">0</span> })
-  <span class="kw">const</span> smooth = <span class="fn">useRef</span>&lt;<span class="ty">Vec2</span>&gt;({ x: <span class="nb">0</span>, y: <span class="nb">0</span> })
-  <span class="kw">const</span> dragging = <span class="fn">useRef</span>(<span class="kw">false</span>)
-  <span class="kw">const</span> last   = <span class="fn">useRef</span>&lt;<span class="ty">Vec2</span>&gt;({ x: <span class="nb">0</span>, y: <span class="nb">0</span> })
-  <span class="kw">const</span> worldRef = <span class="fn">useRef</span>&lt;<span class="ty">HTMLDivElement</span> <span class="op">|</span> <span class="kw">null</span>&gt;(<span class="kw">null</span>)
-  <span class="kw">const</span> rafRef = <span class="fn">useRef</span>&lt;<span class="ty">number</span>&gt;(<span class="nb">0</span>)
-
-  <span class="kw">const</span> <span class="fn">lerp</span> = (a: <span class="ty">number</span>, b: <span class="ty">number</span>, t: <span class="ty">number</span>) <span class="op">=&gt;</span>
-    a + (b - a) * t
-
-  <span class="kw">const</span> <span class="fn">tick</span> = <span class="fn">useCallback</span>(() <span class="op">=&gt;</span> {
-    smooth.current.x = <span class="fn">lerp</span>(smooth.current.x, raw.current.x, <span class="nb">0.1</span>)
-    smooth.current.y = <span class="fn">lerp</span>(smooth.current.y, raw.current.y, <span class="nb">0.1</span>)
-
-    <span class="kw">if</span> (worldRef.current) {
-      worldRef.current.style.transform =
-        <span class="str">`translate(<span class="op">${</span>smooth.current.x<span class="op}</span>px, <span class="op">${</span>smooth.current.y<span class="op}</span>px)`</span>
-    }
-
-    rafRef.current = <span class="fn">requestAnimationFrame</span>(tick)
-  }, [])
-
-  <span class="fn">useEffect</span>(() <span class="op">=&gt;</span> {
-    rafRef.current = <span class="fn">requestAnimationFrame</span>(tick)
-    <span class="kw">return</span> () <span class="op">=&gt;</span> <span class="fn">cancelAnimationFrame</span>(rafRef.current)
-  }, [tick])
-
-  <span class="cm">// pointer handlers omitted for brevity</span>
-
-  <span class="kw">return</span> { worldRef }
-}</code></pre>
       </div>
+      <script>
+            (function () {
+              const wrap = document.getElementById('orbital-wrap')
+              const canvas = document.getElementById('orbital-canvas')
+              const cur = document.getElementById('orbital-cursor')
+              const lbl = document.getElementById('orbital-label')
+              const ctx = canvas.getContext('2d')
+              let W, H, dpr
+
+              function resize() {
+                dpr = Math.min(window.devicePixelRatio || 1, 2)
+                W = wrap.clientWidth; H = wrap.clientHeight
+                canvas.width = W * dpr; canvas.height = H * dpr
+                canvas.style.width = W + 'px'; canvas.style.height = H + 'px'
+                ctx.setTransform(1, 0, 0, 1, 0, 0); ctx.scale(dpr, dpr)
+                initClusters()
+              }
+              function drawCorners(ctx, W, H, a) {
+                const L = 14, P = 12; ctx.strokeStyle = `rgba(200,240,96,${a * 0.35})`; ctx.lineWidth = 1
+                  ;[[P, P, 1, 1], [P, H - P, 1, -1], [W - P, H - P, -1, -1]].forEach(([x, y, dx, dy]) => {
+                    ctx.beginPath(); ctx.moveTo(x, y); ctx.lineTo(x + dx * L, y); ctx.moveTo(x, y); ctx.lineTo(x, y + dy * L); ctx.stroke()
+                  })
+              }
+              function drawGrid(ctx, W, H, a) {
+                ctx.strokeStyle = `rgba(255,255,255,${a * 0.03})`; ctx.lineWidth = 1
+                for (let i = 0; i <= 6; i++) { const y = H / 6 * i; ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(W, y); ctx.stroke() }
+                for (let i = 0; i <= 6; i++) { const x = W / 6 * i; ctx.beginPath(); ctx.moveTo(x, 0); ctx.lineTo(x, H); ctx.stroke() }
+              }
+              function drawScanline(ctx, W, H, t) {
+                const y = ((t * 0.08) % 1) * H; const g = ctx.createLinearGradient(0, y - 20, 0, y + 20)
+                g.addColorStop(0, 'rgba(200,240,96,0)'); g.addColorStop(0.5, 'rgba(200,240,96,0.025)'); g.addColorStop(1, 'rgba(200,240,96,0)')
+                ctx.fillStyle = g; ctx.fillRect(0, y - 20, W, 40)
+              }
+              function drawVignette(ctx, W, H) {
+                const vig = ctx.createRadialGradient(W / 2, H / 2, H * 0.05, W / 2, H / 2, H * 0.9); vig.addColorStop(0, 'rgba(10,10,10,0)'); vig.addColorStop(1, 'rgba(0,0,0,0.65)')
+                ctx.fillStyle = vig; ctx.fillRect(0, 0, W, H)
+              }
+              function drawEquation(ctx, W, lines) {
+                ctx.font = '9px "DM Mono",monospace'; ctx.textBaseline = 'top'; ctx.textAlign = 'right'; ctx.fillStyle = 'rgba(200,240,96,0.65)'
+                lines.forEach((line, i) => { ctx.fillText(line, W - 14, 14 + i * 12) })
+                ctx.textAlign = 'left'
+              }
+
+              const NUM_CLUSTERS = 6;
+              const P_PER_CLUSTER = 120;
+              const pts = [];
+              function initClusters() {
+                pts.length = 0;
+                for (let i = 0; i < NUM_CLUSTERS; i++) {
+                  const radius = 45 + i * 38;
+                  for (let j = 0; j < P_PER_CLUSTER; j++) {
+                    const ang = (j / P_PER_CLUSTER) * Math.PI * 2;
+                    pts.push({
+                      cx: W / 2, cy: H / 2,
+                      r: radius, ang: ang,
+                      x: W / 2 + Math.cos(ang) * radius,
+                      y: H / 2 + Math.sin(ang) * radius,
+                      vx: 0, vy: 0,
+                      baseAng: ang,
+                      clusterIdx: i,
+                      pointIdx: j
+                    });
+                  }
+                }
+              }
+
+              let mouseX = -9999, mouseY = -9999, inside = false, autoT = 0, entropy = 0;
+              wrap.addEventListener('mouseenter', () => { inside = true; cur.style.opacity = '1' })
+              wrap.addEventListener('mouseleave', () => { inside = false; cur.style.opacity = '0' })
+              wrap.addEventListener('mousemove', e => {
+                const r = wrap.getBoundingClientRect(); mouseX = e.clientX - r.left; mouseY = e.clientY - r.top
+                cur.style.left = mouseX + 'px'; cur.style.top = mouseY + 'px'
+              })
+
+              let running = false;
+              const observer = new IntersectionObserver(entries => { running = entries[0].isIntersecting; if (running) requestAnimationFrame(draw); }, { threshold: 0.1 });
+              observer.observe(wrap);
+
+              function draw(ts) {
+                if (!running) return;
+                const t = ts * 0.001; ctx.clearRect(0, 0, W, H)
+                if (!inside) {
+                  autoT += 0.005;
+                  mouseX = W / 2 + Math.cos(autoT * 0.7) * W * 0.15;
+                  mouseY = H / 2 + Math.sin(autoT * 1.1) * H * 0.15;
+                }
+
+                drawVignette(ctx, W, H); drawGrid(ctx, W, H, 1); drawScanline(ctx, W, H, t); drawCorners(ctx, W, H, 1)
+
+                let curEntropy = 0;
+
+                // Render points and manage physics
+                ctx.beginPath();
+                ctx.fillStyle = 'rgba(200, 240, 96, 0.95)';
+
+                for (let p of pts) {
+                  const speedFact = 0.18 + p.clusterIdx * 0.08;
+                  const hx = W / 2 + Math.cos(p.ang + t * speedFact) * p.r;
+                  const hy = H / 2 + Math.sin(p.ang + t * speedFact) * p.r;
+
+                  const dx = p.x - mouseX;
+                  const dy = p.y - mouseY;
+                  const distSq = dx * dx + dy * dy;
+
+                  if (distSq < 14400) {
+                    const dist = Math.sqrt(distSq);
+                    const force = Math.pow(1 - dist / 120, 2) * 5.5;
+                    p.vx += (dx / dist) * force;
+                    p.vy += (dy / dist) * force;
+                    curEntropy += force;
+                  }
+
+                  p.vx += (hx - p.x) * 0.04;
+                  p.vy += (hy - p.y) * 0.04;
+                  p.vx *= 0.93;
+                  p.vy *= 0.93;
+                  p.x += p.vx;
+                  p.y += p.vy;
+
+                  // Only draw points to avoid "weird strings" from origin/jump
+                  if (p.pointIdx % 2 === 0) {
+                    ctx.moveTo(p.x, p.y);
+                    ctx.arc(p.x, p.y, 1.1, 0, Math.PI * 2);
+                  }
+                }
+                ctx.fill();
+
+                // Connect points very locally to form "rings" without crossing
+                ctx.beginPath();
+                ctx.strokeStyle = 'rgba(200, 240, 96, 0.45)';
+                ctx.lineWidth = 0.8;
+                for (let i = 0; i < pts.length; i++) {
+                  if (i % P_PER_CLUSTER === 0) continue;
+                  const p1 = pts[i - 1], p2 = pts[i];
+                  const distSq = (p1.x - p2.x) ** 2 + (p1.y - p2.y) ** 2;
+                  if (distSq < 400) { // Bond strength check
+                    ctx.moveTo(p1.x, p1.y); ctx.lineTo(p2.x, p2.y);
+                  }
+                }
+                ctx.stroke();
+
+                entropy = entropy * 0.95 + (curEntropy / pts.length) * 0.05 * 100;
+                drawEquation(ctx, W, ['Ψ(r,θ) = Σ Aₙ cos(nθ - ωt)', `ENTROPY  ${entropy.toFixed(3)}`, `N  ${pts.length}`, inside ? 'STATE: DISRUPTED' : 'STATE: HARMONIC']);
+                lbl.textContent = `entropy: ${entropy.toFixed(3)}`;
+                requestAnimationFrame(draw)
+              }
+              resize(); window.addEventListener('resize', () => { ctx.setTransform(1, 0, 0, 1, 0, 0); resize() });
+            })()
+      </script>
 
       <h2 class="canvas-managed" data-prose="true" data-line-id="prose-019">Attention Metrics.</h2>
 
@@ -801,29 +927,168 @@
         the modern web, every second of delay is seen as a failure of engineering. But in the resilient architecture of
         the human spirit, that same delay is the sacred space where wonder and critical reflection finally reside.</p>
 
-      <div class="code-block">
-        <div class="code-block-header">
-          <span class="code-block-lang">TypeScript</span>
-          <div class="code-block-dots">
-            <span class="dot dot-r"></span>
-            <span class="dot dot-y"></span>
-            <span class="dot dot-g"></span>
+      <div class="demo-section">
+        <div class="demo-header">
+          <span class="demo-label">The Lens of Patience</span>
+          <span class="demo-hint">reveal meaning with slow intention</span>
+        </div>
+        <div id="lens-wrap" style="
+          width: 100%;
+          height: 380px;
+          position: relative;
+          overflow: hidden;
+          background: #0c0c0c;
+          cursor: none;
+        ">
+          <canvas id="lens-canvas" style="position:absolute;inset:0;width:100%;height:100%;"></canvas>
+          <div id="lens-cursor"
+            style="position:absolute;width:4px;height:4px;border-radius:50%;background:#c8f060;pointer-events:none;transform:translate(-50%,-50%);opacity:0;box-shadow:0 0 6px 2px rgba(200,240,96,0.4);transition:opacity 0.3s;z-index:2;">
+          </div>
+          <div
+            style="position:absolute;bottom:14px;left:50%;transform:translateX(-50%);font-family:'DM Mono',monospace;font-size:9px;letter-spacing:0.12em;text-transform:uppercase;color:rgba(200,240,96,0.5);pointer-events:none;z-index:2;">
+            <span id="lens-label">clarity: 0.000</span>
           </div>
         </div>
-        <pre><code>/**
- * Wraps a value within [0, range) correctly for negatives.
- * The double-mod pattern handles JavaScript's signed modulo.
- */
-const wrap = (value: number, range: number) =&gt;
-  ((value % range) + range) % range
-
-// For each cell at grid index (col, row):
-const x = wrap(col * CELL_SIZE + smooth.x, COLS * CELL_SIZE)
-const y = wrap(row * CELL_SIZE + smooth.y, ROWS * CELL_SIZE)
-
-cell.style.transform = `translate(${x}px, ${y}px)`</code></pre>
       </div>
+      <script>
+            (function () {
+              const wrap = document.getElementById('lens-wrap')
+              const canvas = document.getElementById('lens-canvas')
+              const cur = document.getElementById('lens-cursor')
+              const lbl = document.getElementById('lens-label')
+              const ctx = canvas.getContext('2d')
+              let W, H, dpr
 
+              function resize() {
+                dpr = Math.min(window.devicePixelRatio || 1, 2); W = wrap.clientWidth; H = wrap.clientHeight
+                canvas.width = W * dpr; canvas.height = H * dpr
+                canvas.style.width = W + 'px'; canvas.style.height = H + 'px'
+                ctx.setTransform(1, 0, 0, 1, 0, 0); ctx.scale(dpr, dpr)
+              }
+              function drawCorners(ctx, W, H, a) {
+                const L = 14, P = 12; ctx.strokeStyle = `rgba(200,240,96,${a * 0.35})`; ctx.lineWidth = 1
+                  ;[[P, P, 1, 1], [P, H - P, 1, -1], [W - P, H - P, -1, -1]].forEach(([x, y, dx, dy]) => {
+                    ctx.beginPath(); ctx.moveTo(x, y); ctx.lineTo(x + dx * L, y); ctx.moveTo(x, y); ctx.lineTo(x, y + dy * L); ctx.stroke()
+                  })
+              }
+              function drawGrid(ctx, W, H, a) {
+                ctx.strokeStyle = `rgba(255,255,255,${a * 0.03})`; ctx.lineWidth = 1
+                for (let i = 0; i <= 6; i++) { const y = H / 6 * i; ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(W, y); ctx.stroke() }
+                for (let i = 0; i <= 6; i++) { const x = W / 6 * i; ctx.beginPath(); ctx.moveTo(x, 0); ctx.lineTo(x, H); ctx.stroke() }
+              }
+              function drawScanline(ctx, W, H, t) {
+                const y = ((t * 0.08) % 1) * H; const g = ctx.createLinearGradient(0, y - 20, 0, y + 20)
+                g.addColorStop(0, 'rgba(200,240,96,0)'); g.addColorStop(0.5, 'rgba(200,240,96,0.025)'); g.addColorStop(1, 'rgba(200,240,96,0)')
+                ctx.fillStyle = g; ctx.fillRect(0, y - 20, W, 40)
+              }
+              function drawVignette(ctx, W, H) {
+                const vig = ctx.createRadialGradient(W / 2, H / 2, H * 0.05, W / 2, H / 2, H * 0.9); vig.addColorStop(0, 'rgba(10,10,10,0)'); vig.addColorStop(1, 'rgba(0,0,0,0.65)')
+                ctx.fillStyle = vig; ctx.fillRect(0, 0, W, H)
+              }
+              function drawEquation(ctx, W, lines) {
+                ctx.font = '9px "DM Mono",monospace'; ctx.textBaseline = 'top'; ctx.textAlign = 'right'; ctx.fillStyle = 'rgba(200,240,96,0.65)'
+                lines.forEach((line, i) => { ctx.fillText(line, W - 14, 14 + i * 12) })
+                ctx.textAlign = 'left'
+              }
+
+              const msg = "MEANING REQUIRES FRICTION.";
+              const words = msg.split(' ').map((w, i) => ({
+                word: w,
+                baseX: 0, baseY: 0,
+                x: 0, y: 0,
+                vx: 0, vy: 0,
+                targetClarity: 0,
+                clarity: 0,
+                unstable: Math.random() > 0.8 // 20% chance to be "flickery"
+              }));
+
+              function initChars() {
+                ctx.font = '18px "DM Mono", monospace';
+                const spacing = 12;
+                let totalW = words.reduce((acc, w) => acc + ctx.measureText(w.word).width + spacing, 0) - spacing;
+
+                let curX = W / 2 - totalW / 2;
+                words.forEach(w => {
+                  w.baseX = curX; w.baseY = H / 2;
+                  w.x = w.baseX + (Math.random() - 0.5) * W;
+                  w.y = w.baseY + (Math.random() - 0.5) * H;
+                  curX += ctx.measureText(w.word).width + spacing;
+                });
+              }
+
+              let mouseX = 0, mouseY = 0, lastMX = 0, lastMY = 0, mVel = 0, inside = false, clarity = 0;
+              wrap.addEventListener('mouseenter', () => { inside = true; cur.style.opacity = '1' })
+              wrap.addEventListener('mouseleave', () => { inside = false; cur.style.opacity = '0' })
+              wrap.addEventListener('mousemove', e => {
+                const r = wrap.getBoundingClientRect(); mouseX = e.clientX - r.left; mouseY = e.clientY - r.top
+                const d = Math.sqrt((mouseX - lastMX) ** 2 + (mouseY - lastMY) ** 2)
+                mVel = mVel * 0.4 + d * 0.6; lastMX = mouseX; lastMY = mouseY
+                cur.style.left = mouseX + 'px'; cur.style.top = mouseY + 'px'
+              })
+
+              let running = false; const obs = new IntersectionObserver(e => { running = e[0].isIntersecting; if (running) requestAnimationFrame(draw) }, { threshold: 0.1 }); obs.observe(wrap)
+
+              function draw(ts) {
+                if (!running) return;
+                const t = ts * 0.001; ctx.clearRect(0, 0, W, H); drawVignette(ctx, W, H); drawGrid(ctx, W, H, 1); drawScanline(ctx, W, H, t); drawCorners(ctx, W, H, 1)
+
+                if (!inside) {
+                  mouseX = W / 2 + Math.cos(t * 0.7) * W * 0.2;
+                  mouseY = H / 2 + Math.sin(t * 1.1) * H * 0.1;
+                  mVel *= 0.8;
+                }
+
+                const V_LIMIT = 6.0;
+                let totalClarity = 0;
+                ctx.font = '18px "DM Mono", monospace';
+                ctx.textAlign = 'left';
+                ctx.textBaseline = 'middle';
+
+                for (let w of words) {
+                  const dx = w.x - mouseX, dy = w.y - mouseY;
+                  const dist = Math.sqrt(dx * dx + dy * dy);
+
+                  // Word-based reveal with a bit of organic flicker
+                  const stutter = w.unstable ? Math.sin(t * 15) * 0.2 : 0;
+
+                  if (dist < 120 && mVel < V_LIMIT) {
+                    w.targetClarity = 1.0 - Math.abs(stutter);
+                    w.vx += (w.baseX - w.x) * 0.12;
+                    w.vy += (w.baseY - w.y) * 0.12;
+                  } else if (mVel > V_LIMIT * 1.5) {
+                    // Scatter
+                    const force = (1 / (dist + 20)) * mVel * 5;
+                    w.vx += (dx / dist || 0) * force;
+                    w.vy += (dy / dist || 0) * force;
+                    w.targetClarity = 0.0;
+                  } else {
+                    w.targetClarity *= 0.95;
+                    w.vx += (w.baseX + Math.sin(t + w.baseX / 10) * 10 - w.x) * 0.01;
+                    w.vy += (w.baseY + Math.cos(t + w.baseY / 10) * 10 - w.y) * 0.01;
+                  }
+
+                  w.vx *= 0.92; w.vy *= 0.92;
+                  w.x += w.vx; w.y += w.vy;
+                  w.clarity += (w.targetClarity - w.clarity) * 0.1;
+                  totalClarity += w.clarity;
+
+                  ctx.fillStyle = `rgba(200,240,96, ${0.1 + 0.9 * w.clarity})`;
+                  ctx.fillText(w.word, w.x, w.y);
+                }
+
+                clarity = totalClarity / words.length;
+                drawEquation(ctx, W, [
+                  'C(v) = lim_{v→0} Σ(word_align)',
+                  `VELOCITY  ${mVel.toFixed(2)}`,
+                  `CLARITY   ${clarity.toFixed(3)}`,
+                  clarity > 0.8 ? 'STATE: ORDER' : 'STATE: ENTROPY'
+                ])
+                lbl.textContent = `clarity: ${clarity.toFixed(3)}`
+                requestAnimationFrame(draw)
+              }
+              resize(); initChars(); window.addEventListener('resize', () => { resize(); initChars(); });
+            })()
+      </script>
       <h2 class="canvas-managed" data-prose="true" data-line-id="prose-021">The metabolic rate of truth.</h2>
 
       <p class="canvas-managed" data-prose="true" data-line-id="prose-022">Truth does not move at the speed of light; it
@@ -831,38 +1096,100 @@ cell.style.transform = `translate(${x}px, ${y}px)`</code></pre>
         different lights and seasons. Quick information is merely a snapshot, a frozen moment that lacks the vitality of
         the whole truth.</p>
 
-      <div class="code-block">
-        <div class="code-block-header">
-          <span class="code-block-lang">TSX</span>
-          <div class="code-block-dots">
-            <span class="dot dot-r"></span>
-            <span class="dot dot-y"></span>
-            <span class="dot dot-g"></span>
+      <div class="demo-section">
+        <div class="demo-header">
+          <span class="demo-label">Lissajous</span>
+          <span class="demo-hint">move cursor to reshape</span>
+        </div>
+        <div id="lissajous-wrap" style="
+          width: 100%;
+          height: 420px;
+          position: relative;
+          overflow: hidden;
+          background: #0c0c0c;
+          cursor: none;
+        ">
+          <canvas id="lissajous-canvas" style="position:absolute;inset:0;width:100%;height:100%;"></canvas>
+          <div id="lissajous-cursor"
+            style="position:absolute;width:4px;height:4px;border-radius:50%;background:#c8f060;pointer-events:none;transform:translate(-50%,-50%);opacity:0;box-shadow:0 0 6px 2px rgba(200,240,96,0.4);transition:opacity 0.3s;z-index:2;">
+          </div>
+          <div
+            style="position:absolute;bottom:14px;left:50%;transform:translateX(-50%);font-family:'DM Mono',monospace;font-size:9px;letter-spacing:0.12em;text-transform:uppercase;color:rgba(200,240,96,0.5);pointer-events:none;z-index:2;">
+            <span id="lissajous-label">fx:1.00 fy:1.00</span>
           </div>
         </div>
-        <pre><code>const COLS = 5
-const ROWS = 5
-const CELL = 160 // px
-const GAP  = 12  // px
-
-export function InfiniteGrid() {
-  const { worldRef } = useInfiniteGrid()
-
-  return (
-    &lt;div className="canvas"&gt;
-      &lt;div className="world" ref={worldRef}&gt;
-        {Array.from({ length: COLS * ROWS }, (_, i) =&gt; {
-          const col = i % COLS
-          const row = Math.floor(i / COLS)
-          return (
-            &lt;Cell key={i} col={col} row={row} size={CELL} gap={GAP} /&gt;
-          )
-        })}
-      &lt;/div&gt;
-    &lt;/div&gt;
-  )
-}</code></pre>
       </div>
+      <script>
+            (function () {
+              const wrap = document.getElementById('lissajous-wrap')
+              const canvas = document.getElementById('lissajous-canvas')
+              const cur = document.getElementById('lissajous-cursor')
+              const lbl = document.getElementById('lissajous-label')
+              const ctx = canvas.getContext('2d')
+              let W, H, dpr
+              function resize() {
+                dpr = Math.min(window.devicePixelRatio || 1, 2); W = wrap.clientWidth; H = wrap.clientHeight
+                canvas.width = W * dpr; canvas.height = H * dpr
+                canvas.style.width = W + 'px'; canvas.style.height = H + 'px'
+                ctx.setTransform(1, 0, 0, 1, 0, 0); ctx.scale(dpr, dpr)
+              }
+              function drawCorners(ctx, W, H, a) {
+                const L = 14, P = 12; ctx.strokeStyle = `rgba(200,240,96,${a * 0.35})`; ctx.lineWidth = 1
+                  ;[[P, P, 1, 1], [P, H - P, 1, -1], [W - P, H - P, -1, -1]].forEach(([x, y, dx, dy]) => {
+                    ctx.beginPath(); ctx.moveTo(x, y); ctx.lineTo(x + dx * L, y); ctx.moveTo(x, y); ctx.lineTo(x, y + dy * L); ctx.stroke()
+                  })
+              }
+              function drawGrid(ctx, W, H, a) {
+                ctx.strokeStyle = `rgba(255,255,255,${a * 0.03})`; ctx.lineWidth = 1
+                for (let i = 0; i <= 6; i++) { const y = H / 6 * i; ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(W, y); ctx.stroke() }
+                for (let i = 0; i <= 6; i++) { const x = W / 6 * i; ctx.beginPath(); ctx.moveTo(x, 0); ctx.lineTo(x, H); ctx.stroke() }
+              }
+              function drawScanline(ctx, W, H, t) {
+                const y = ((t * 0.08) % 1) * H; const g = ctx.createLinearGradient(0, y - 20, 0, y + 20)
+                g.addColorStop(0, 'rgba(200,240,96,0)'); g.addColorStop(0.5, 'rgba(200,240,96,0.025)'); g.addColorStop(1, 'rgba(200,240,96,0)')
+                ctx.fillStyle = g; ctx.fillRect(0, y - 20, W, 40)
+              }
+              function drawVignette(ctx, W, H) {
+                const vig = ctx.createRadialGradient(W / 2, H / 2, H * 0.05, W / 2, H / 2, H * 0.9); vig.addColorStop(0, 'rgba(10,10,10,0)'); vig.addColorStop(1, 'rgba(0,0,0,0.65)')
+                ctx.fillStyle = vig; ctx.fillRect(0, 0, W, H)
+              }
+              function drawEquation(ctx, W, lines) {
+                ctx.font = '9px "DM Mono",monospace'; ctx.textBaseline = 'top'; ctx.textAlign = 'right'; ctx.fillStyle = 'rgba(200,240,96,0.65)'
+                lines.forEach((line, i) => { ctx.fillText(line, W - 14, 14 + i * 12) })
+                ctx.textAlign = 'left'
+              }
+              let fxt = 1, fyt = 1, fx = 1, fy = 1, ph = 0, inside = false, autoT = 0
+              wrap.addEventListener('mouseenter', () => { inside = true; cur.style.opacity = '1' })
+              wrap.addEventListener('mouseleave', () => { inside = false; cur.style.opacity = '0' })
+              wrap.addEventListener('mousemove', e => {
+                const r = wrap.getBoundingClientRect(); const mx = e.clientX - r.left; const my = e.clientY - r.top
+                cur.style.left = mx + 'px'; cur.style.top = my + 'px'
+                fxt = 1 + (mx / W) * 4; fyt = 1 + (my / H) * 4
+              })
+
+              function draw(ts) {
+                if (!running) return;
+                const t = ts * 0.001; ctx.clearRect(0, 0, W, H)
+                if (!inside) {
+                  autoT += 0.003; fxt = 1.5 + Math.cos(autoT) * 0.5; fyt = 2 + Math.sin(autoT * 0.7) * 1.2
+                }
+                drawVignette(ctx, W, H); drawGrid(ctx, W, H, 1); drawScanline(ctx, W, H, t); drawCorners(ctx, W, H, 1)
+                fx = spring(fx, fxt, 0.03); fy = spring(fy, fyt, 0.03); ph += 0.012
+                const ampX = W * 0.38, ampY = H * 0.38, px = W / 2 + ampX * Math.sin(fx * ph + Math.PI / 2), py = H / 2 + ampY * Math.sin(fy * ph)
+                trail.push({ x: px, y: py }); if (trail.length > LEN) trail.shift()
+                for (let i = 1; i < trail.length; i++) {
+                  const p = i / trail.length, alpha = Math.pow(p, 2) * 0.85
+                  ctx.beginPath(); ctx.moveTo(trail[i - 1].x, trail[i - 1].y); ctx.lineTo(trail[i].x, trail[i].y)
+                  ctx.strokeStyle = `rgba(200,240,96,${alpha})`; ctx.lineWidth = 1.2; ctx.stroke()
+                }
+                ctx.beginPath(); ctx.arc(px, py, 2.5, 0, Math.PI * 2); ctx.fillStyle = '#c8f060'; ctx.fill()
+                drawEquation(ctx, W, ['x = A sin(ω₁t + φ)', 'y = B sin(ω₂t)', `ω₁ ${fx.toFixed(2)}`, `ω₂ ${fy.toFixed(2)}`])
+                lbl.textContent = `fx:${fx.toFixed(2)} fy:${fy.toFixed(2)}`
+                requestAnimationFrame(draw)
+              }
+              resize(); window.addEventListener('resize', () => { ctx.setTransform(1, 0, 0, 1, 0, 0); resize() });
+            })()
+      </script>
 
       <h2 class="canvas-managed" data-prose="true" data-line-id="prose-023">A new digital hygiene.</h2>
 

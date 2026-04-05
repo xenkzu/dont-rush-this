@@ -119,17 +119,58 @@ function dismissPreloader() {
   })
 }
 
+// ── Audio Notification ─────────────────────────────────────
+let audioCtx = null
+function playNotificationSound() {
+  if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)()
+  if (audioCtx.state === 'suspended') audioCtx.resume()
+
+  const now = audioCtx.currentTime
+  const osc = audioCtx.createOscillator()
+  const osc2 = audioCtx.createOscillator()
+  const gain = audioCtx.createGain()
+  
+  // Harmonics for a more "expensive" chime
+  osc.type = 'sine'; osc.frequency.setValueAtTime(660, now)
+  osc.frequency.exponentialRampToValueAtTime(1320, now + 0.1)
+  
+  osc2.type = 'sine'; osc2.frequency.setValueAtTime(330, now)
+  osc2.frequency.exponentialRampToValueAtTime(660, now + 0.1)
+
+  gain.gain.setValueAtTime(0, now)
+  gain.gain.linearRampToValueAtTime(0.12, now + 0.02)
+  gain.gain.exponentialRampToValueAtTime(0.001, now + 0.5)
+
+  osc.connect(gain); osc2.connect(gain); gain.connect(audioCtx.destination)
+  osc.start(now); osc2.start(now); 
+  osc.stop(now + 0.6); osc2.stop(now + 0.6)
+}
+
+// Ensure audio context is ready on first interaction
+const resumeAudio = () => { if (audioCtx && audioCtx.state === 'suspended') audioCtx.resume() }
+window.addEventListener('pointerdown', resumeAudio, { once: true })
+window.addEventListener('wheel', resumeAudio, { once: true })
+window.addEventListener('keydown', resumeAudio, { once: true })
+
 // ── Onboarding hint ────────────────────────────────────────
 function showHintAfterDelay() {
+  if (!hint) return
+
+  // Perfectly sync sound peak to visual appearance
+  hint.addEventListener('transitionstart', (e) => {
+    if (e.propertyName === 'opacity') {
+      setTimeout(playNotificationSound, 85)
+    }
+  }, { once: true })
+
   setTimeout(() => {
-    if (!hint) return
     hint.style.opacity   = '1'
     hint.style.transform = 'translateY(0)'
 
     setTimeout(() => {
       hint.style.opacity   = '0'
       hint.style.transform = 'translateY(100%)'
-    }, 4000)
+    }, 4500)
   }, 4000)
 }
 
@@ -303,10 +344,14 @@ function detachmentLoop(timestamp) {
         if (!word.locked || word.isPhysics) continue
         const wordScreenY = word.y
         if (wordScreenY < viewportTop || wordScreenY > viewportBottom) continue
-        const threshold = CRITICAL_THRESHOLD + (Math.random() * 0.06)
+        
+        // Organic selection: only detach 30% of candidate words per check
+        if (Math.random() > 0.3) continue;
+
+        const threshold = CRITICAL_THRESHOLD + (Math.random() * 0.04)
         if (si < threshold) {
           detachWord(word, scrollY, {
-            x: (Math.random() - 0.5) * 3,
+            x: (Math.random() - 0.5) * 4,
             y: -1
           })
         }
