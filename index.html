@@ -10,6 +10,7 @@
     href="https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&family=DM+Mono:wght@300;400&family=Syne:wght@400;500;600&display=swap"
     rel="stylesheet">
   <script src="https://cdnjs.cloudflare.com/ajax/libs/matter-js/0.19.0/matter.min.js"></script>
+  <link rel="icon" type="image/png" href="public/You%20cant%20rush.png">
   <link rel="stylesheet" href="styles/base.css">
 </head>
 
@@ -1121,11 +1122,11 @@
       </div>
       <script>
             (function () {
-              const wrap   = document.getElementById('lissajous-wrap')
+              const wrap = document.getElementById('lissajous-wrap')
               const canvas = document.getElementById('lissajous-canvas')
-              const cur    = document.getElementById('lissajous-cursor')
-              const lbl    = document.getElementById('lissajous-label')
-              const ctx    = canvas.getContext('2d')
+              const cur = document.getElementById('lissajous-cursor')
+              const lbl = document.getElementById('lissajous-label')
+              const ctx = canvas.getContext('2d')
               let W, H, dpr
 
               function resize() {
@@ -1136,9 +1137,9 @@
               }
               function drawCorners(ctx, W, H, a) {
                 const L = 14, P = 12; ctx.strokeStyle = `rgba(200,240,96,${a * 0.35})`; ctx.lineWidth = 1
-                ;[[P, P, 1, 1], [P, H - P, 1, -1], [W - P, H - P, -1, -1]].forEach(([x, y, dx, dy]) => {
-                  ctx.beginPath(); ctx.moveTo(x, y); ctx.lineTo(x + dx * L, y); ctx.moveTo(x, y); ctx.lineTo(x, y + dy * L); ctx.stroke()
-                })
+                  ;[[P, P, 1, 1], [P, H - P, 1, -1], [W - P, H - P, -1, -1]].forEach(([x, y, dx, dy]) => {
+                    ctx.beginPath(); ctx.moveTo(x, y); ctx.lineTo(x + dx * L, y); ctx.moveTo(x, y); ctx.lineTo(x, y + dy * L); ctx.stroke()
+                  })
               }
               function drawGrid(ctx, W, H, a) {
                 ctx.strokeStyle = `rgba(255,255,255,${a * 0.03})`; ctx.lineWidth = 1
@@ -1160,8 +1161,9 @@
                 ctx.textAlign = 'left'
               }
 
-              let fxt = 1, fyt = 1, fx = 1, fy = 1, ph = 0, inside = false, autoT = 0
-              const trail = [], LEN = 200
+              let fxt = 1, fyt = 1, fx = 1, fy = 1, phX = 0, phY = 0, deltaPhi = 0, inside = false, autoT = 0
+              let mVel = 0, lastMX = 0, lastMY = 0, chaos = 0, rx = 0, ry = 0;
+              let trail = [], LEN = 400
               function spring(a, b, t) { return a + (b - a) * t }
 
               wrap.addEventListener('mouseenter', () => { inside = true; cur.style.opacity = '1' })
@@ -1169,7 +1171,13 @@
               wrap.addEventListener('mousemove', e => {
                 const r = wrap.getBoundingClientRect(); const mx = e.clientX - r.left; const my = e.clientY - r.top
                 cur.style.left = mx + 'px'; cur.style.top = my + 'px'
-                fxt = 1 + (mx / W) * 4; fyt = 1 + (my / H) * 4
+
+                const d = Math.hypot(mx - lastMX, my - lastMY);
+                mVel = mVel * 0.5 + d * 0.5;
+                lastMX = mx; lastMY = my;
+
+                fxt = 1 + (mx / W) * 5; fyt = 1 + (my / H) * 5
+                if (chaos < 0.1 && (Math.abs(fxt - fx) > 0.1 || Math.abs(fyt - fy) > 0.1)) trail = []
               })
 
               let running = false; const obs = new IntersectionObserver(e => {
@@ -1180,24 +1188,48 @@
                 if (!running) return;
                 const t = ts * 0.001; ctx.clearRect(0, 0, W, H)
                 if (!inside) {
-                  autoT += 0.003; fxt = 1.5 + Math.cos(autoT) * 0.5; fyt = 2 + Math.sin(autoT * 0.7) * 1.2
+                  autoT += 0.003; fxt = 1.5 + Math.cos(autoT) * 1.5; fyt = 2 + Math.sin(autoT * 0.7) * 1.5
                 }
+
+                mVel *= 0.85;
+                if (inside && mVel > 2.5) {
+                  chaos += (Math.min(mVel, 25) - 2.5) * 0.04;
+                  if (chaos > 1) chaos = 1;
+                } else {
+                  chaos = Math.max(0, chaos - 0.008); // Deliberately slow recovery
+                }
+
                 drawVignette(ctx, W, H); drawGrid(ctx, W, H, 1); drawScanline(ctx, W, H, t); drawCorners(ctx, W, H, 1)
-                fx = spring(fx, fxt, 0.03); fy = spring(fy, fyt, 0.03); 
-                
-                // Normalize speed: complexity shouldn't mean franticness
-                ph += 0.015 / Math.max(fx, fy)
-                
-                const ampX = W * 0.38, ampY = H * 0.38, px = W / 2 + ampX * Math.sin(fx * ph + Math.PI / 2), py = H / 2 + ampY * Math.sin(fy * ph)
+                fx = spring(fx, fxt, 0.02); fy = spring(fy, fyt, 0.02);
+                deltaPhi += 0.015;
+
+                // Instead of random walk, we boost the angular velocity of the phase integration
+                // This makes the pattern trace out "super fast" while maintaining the Lissajous math.
+                const speedBoost = 1 + (chaos * 85);
+                const speed = (0.015 / Math.max(fx, fy)) * speedBoost;
+
+                phX += fx * speed;
+                phY += fy * speed;
+
+                const ampX = W * 0.38, ampY = H * 0.38;
+                const px = W / 2 + ampX * Math.sin(phX + deltaPhi);
+                const py = H / 2 + ampY * Math.sin(phY);
+
                 trail.push({ x: px, y: py }); if (trail.length > LEN) trail.shift()
                 for (let i = 1; i < trail.length; i++) {
-                  const p = i / trail.length, alpha = Math.pow(p, 2) * 0.85
+                  const p = i / trail.length, alpha = Math.pow(p, 0.35) * 0.55
                   ctx.beginPath(); ctx.moveTo(trail[i - 1].x, trail[i - 1].y); ctx.lineTo(trail[i].x, trail[i].y)
-                  ctx.strokeStyle = `rgba(200,240,96,${alpha})`; ctx.lineWidth = 1.2; ctx.stroke()
+                  ctx.strokeStyle = `rgba(200,240,96,${alpha})`; ctx.lineWidth = 0.9; ctx.stroke()
                 }
                 ctx.beginPath(); ctx.arc(px, py, 2.5, 0, Math.PI * 2); ctx.fillStyle = '#c8f060'; ctx.fill()
-                drawEquation(ctx, W, ['x = A sin(ω₁t + φ)', 'y = B sin(ω₂t)', `ω₁ ${fx.toFixed(2)}`, `ω₂ ${fy.toFixed(2)}` ])
-                lbl.textContent = `fx:${fx.toFixed(2)} fy:${fy.toFixed(2)}`
+                drawEquation(ctx, W, [
+                  'x = A sin(ω₁t + δ)',
+                  'y = B sin(ω₂t)',
+                  `ω₁ ${fx.toFixed(2)}`, `ω₂ ${fy.toFixed(2)}`,
+                  `BOOST ${speedBoost.toFixed(0)}x`,
+                  chaos > 0.1 ? 'STATE: SIGNAL OVERRUN' : 'STATE: HARMONIC'
+                ])
+                lbl.textContent = chaos > 0.1 ? `boost: ${speedBoost.toFixed(0)}x` : `fx:${fx.toFixed(2)} fy:${fy.toFixed(2)}`
                 requestAnimationFrame(draw)
               }
               resize(); window.addEventListener('resize', () => { ctx.setTransform(1, 0, 0, 1, 0, 0); resize() });
