@@ -2,7 +2,7 @@
 
 import { getWordRegistry } from './pretext-bridge.js'
 import { getStabilityIndex } from './stability.js'
-import { getWorld, setRecoveryMode, isCursorIdle } from './physics.js'
+import { getWorld, setRecoveryMode, isCursorIdle, setRecoveryFloor } from './physics.js'
 
 // We assume Matter is globally available via index.html script tag
 const { Body, World } = Matter
@@ -65,6 +65,7 @@ function attachEvents() {
     recoveryGranted = true
     recoveryActive  = true
     setRecoveryMode(true)
+    setRecoveryFloor(true)  // lift floor so words can reach below-viewport homes
 
     const words = getWordRegistry()
     const scrollY = window.scrollY
@@ -89,7 +90,7 @@ function attachEvents() {
 
     lastRecoveryScrollY = window.scrollY
 
-    // Hard rescue after 5s — any word still stuck gets teleported
+    // Hard rescue after 7s — only words truly stuck get teleported
     setTimeout(() => {
       const currentWords = getWordRegistry()
       const currentScrollY = window.scrollY
@@ -98,11 +99,17 @@ function attachEvents() {
       for (const word of currentWords) {
         if (!word.isPhysics || !word.body) continue
         
-        // Teleport to home
-        Body.setPosition(word.body, {
-          x: word.x + word.width / 2,
-          y: word.y - currentScrollY + word.lineHeight * 0.5
-        })
+        const targetX = word.x + word.width / 2
+        const targetY = word.y - currentScrollY + word.lineHeight * 0.5
+        const dx = targetX - word.body.position.x
+        const dy = targetY - word.body.position.y
+        const dist = Math.sqrt(dx * dx + dy * dy)
+        const speed = Math.sqrt(word.body.velocity.x ** 2 + word.body.velocity.y ** 2)
+
+        // Only hard rescue words truly stuck — very far AND not moving
+        if (dist < 60 || speed > 0.5) continue
+
+        Body.setPosition(word.body, { x: targetX, y: targetY })
         Body.setVelocity(word.body, { x: 0, y: 0 })
         Body.setAngle(word.body, 0)
         Body.setAngularVelocity(word.body, 0)
@@ -112,7 +119,7 @@ function attachEvents() {
       if (rescued > 0) {
         console.log(`[recovery] Hard rescued ${rescued} stuck words`)
       }
-    }, 5000)
+    }, 7000)
   })
 
   no.addEventListener('click', () => {
@@ -239,6 +246,7 @@ export function updateRecovery(timestamp, scrollY) {
       calmSince = null
       recoveryGranted = false
       recoveryActive = false
+      setRecoveryFloor(false)
       hideDialog()
     }
   }
@@ -267,13 +275,22 @@ export function updateRecovery(timestamp, scrollY) {
     // Only attempt lock if target is near viewport
     const isOffScreen = targetY < -300 || targetY > window.innerHeight + 300
     if (!isOffScreen && dist < LOCK_DISTANCE && speed < LOCK_VELOCITY) {
+      // Zero out velocity first, then let one more frame render
+      // before removing — prevents visual position jump
+      Body.setVelocity(word.body, { x: 0, y: 0 })
+      Body.setAngularVelocity(word.body, 0)
       Body.setPosition(word.body, { x: targetX, y: targetY })
       Body.setAngle(word.body, 0)
-      World.remove(world, word.body)
-      word.body      = null
-      word.isPhysics = false
-      word.locked    = true
-      word.pruned    = false
+
+      // Remove body next frame — not immediately
+      requestAnimationFrame(() => {
+        if (!word.body) return
+        World.remove(world, word.body)
+        word.body      = null
+        word.isPhysics = false
+        word.locked    = true
+        word.pruned    = false
+      })
       continue
     }
 
@@ -325,6 +342,7 @@ export function updateRecovery(timestamp, scrollY) {
     calmSince        = null
     recoveryComplete = true
     setRecoveryMode(false)
+    setRecoveryFloor(false) // Restore floor when recovery is fully complete
     console.log('[recovery] Complete.')
   }
 }

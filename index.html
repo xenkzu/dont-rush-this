@@ -76,12 +76,9 @@
         <!-- Track -->
         <svg width="32" height="32" viewBox="0 0 32 32">
           <circle cx="16" cy="16" r="14" fill="none" stroke="var(--border)" stroke-width="1"></circle>
-          <circle id="preloader-circle-path" cx="16" cy="16" r="14" fill="none" 
-                  stroke="var(--accent)" stroke-width="1.5"
-                  stroke-dasharray="88" stroke-dashoffset="88"
-                  stroke-linecap="round"
-                  transform="rotate(-90 16 16)"
-                  style="transition: stroke-dashoffset 0.4s ease;"></circle>
+          <circle id="preloader-circle-path" cx="16" cy="16" r="14" fill="none" stroke="var(--accent)"
+            stroke-width="1.5" stroke-dasharray="88" stroke-dashoffset="88" stroke-linecap="round"
+            transform="rotate(-90 16 16)" style="transition: stroke-dashoffset 0.4s ease;"></circle>
         </svg>
       </div>
       <span id="preloader-status" style="
@@ -120,58 +117,110 @@
     top: 0;
     height: 100vh;
     z-index: 200;
-    display: flex;
-    align-items: center;
     pointer-events: none;
+    display: flex;
+    align-items: flex-start;
+    opacity: 0;
+    transition: opacity 0.4s ease;
   ">
-    <div id="hud-inner" style="
+    <!-- Bubble — floats left of track, follows thumb -->
+    <div id="hud-bubble" style="
+      position: absolute;
+      right: 10px;
+      top: 0;
       display: flex;
-      flex-direction: column;
       align-items: center;
-      gap: 8px;
-      transform-origin: center center;
-      will-change: transform;
+      gap: 6px;
+      will-change: transform, opacity;
     ">
-      <span id="hud-label" style="
-        font-family: var(--mono);
-        color: var(--text-dim);
-        text-transform: uppercase;
-        writing-mode: horizontal-tb;
-        transform: none;
-        max-width: 60px;
-        text-align: right;
-        white-space: normal;
-        word-break: break-word;
-        font-size: 8px;
-        letter-spacing: 0.10em;
-        transition: color 0.3s ease;
-      ">dead body</span>
+      <!-- Connector dot -->
+      <div id="hud-connector" style="
+        width: 3px;
+        height: 3px;
+        border-radius: 50%;
+        background: var(--accent);
+        opacity: 0.3;
+        flex-shrink: 0;
+        order: 2;
+      "></div>
 
-      <div id="hud-track" style="
-        width: 2px;
-        height: 120px;
-        background: var(--border);
-        border-radius: 1px;
+      <!-- Bubble box -->
+      <div id="hud-bubble-box" style="
         position: relative;
+        border-radius: 3px;
         overflow: hidden;
+        order: 1;
+        padding: 4px 0px;
+        display: flex;
+        align-items: center;
+        will-change: width;
       ">
-        <div id="hud-thumb" style="
+        <!-- Green fill layer — opacity driven by chaos -->
+        <div id="hud-bubble-fill" style="
           position: absolute;
-          left: 0;
-          width: 100%;
-          background: var(--accent);
-          border-radius: 1px;
-          top: 0;
-          height: 20%;
-          transition: top 0.1s linear, height 0.15s ease;
+          inset: 0;
+          background: #c8f060;
+          opacity: 0.20;
+          border-radius: 3px;
+          will-change: opacity;
         "></div>
+
+        <!-- Border — same green, low opacity at rest -->
+        <div id="hud-bubble-border" style="
+          position: absolute;
+          inset: 0;
+          border: 1px solid #c8f060;
+          border-radius: 3px;
+          opacity: 0.25;
+          will-change: opacity;
+        "></div>
+
+        <!-- Label text — difference blend so it inverts on bright fill -->
+        <span id="hud-label" style="
+          position: relative;
+          z-index: 1;
+          font-family: var(--mono);
+          font-size: 9px;
+          letter-spacing: 0.10em;
+          text-transform: uppercase;
+          color: #c8f060;
+          white-space: nowrap;
+          display: block;
+          padding: 0 8px;
+          mix-blend-mode: difference;
+          will-change: opacity;
+        ">unbothered. moisturized.</span>
       </div>
+    </div>
+
+    <!-- Track -->
+    <div id="hud-track" style="
+      position: absolute;
+      right: 0;
+      top: 50%;
+      transform: translateY(-50%);
+      width: 2px;
+      height: 120px;
+      background: var(--border);
+      border-radius: 1px;
+    ">
+      <!-- Thumb -->
+      <div id="hud-thumb" style="
+        position: absolute;
+        left: 0;
+        width: 100%;
+        background: var(--accent);
+        border-radius: 1px;
+        top: 0;
+        height: 20%;
+        will-change: top, height, opacity;
+      "></div>
     </div>
   </div>
 
   <!-- NAV -->
   <nav>
-    <a href="#" class="nav-logo">yashkaul.dev</a>
+    <a href="https://github.com/xenkzu" target="_blank" class="nav-logo">yashkaul.dev</a>
     <ul class="nav-links">
       <li><a href="#">Work</a></li>
       <li><a href="#">Blog</a></li>

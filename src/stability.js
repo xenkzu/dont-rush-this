@@ -1,21 +1,21 @@
 // ── Config (Tune these to change the feel) ───────────────────
 const CONFIG = {
-  SCROLL_SENSITIVITY: 250,    // Higher = less sensitive to scroll (try 100 or 150)
-  ATTACK_STRENGTH: 0.04,  // How fast it drops into chaos (0.01 to 0.2)
-  DECAY_STRENGTH: 0.005,  // How fast it recovers to calm (0.005 to 0.05)
-  SIGNAL_FALLOFF: 0.97   // How fast the raw signals fade (0.90 to 0.99)
+  SCROLL_SENSITIVITY: 150,    // Higher = less sensitive to scroll
+  ATTACK_STRENGTH: 0.025,     // Slower drop into chaos (lets you read intermediate labels)
+  DECAY_STRENGTH: 0.002,      // Slower recovery (makes states feel more permanent)
+  SIGNAL_FALLOFF: 0.98        // Makes chaos linger (prevents 'flickering' back to calm)
 }
 
 // ── Sarcastic label map ─────────────────────────────────────
 const LABELS = [
-  { threshold: 0.95, label: 'dead body' },
-  { threshold: 0.80, label: 'deep meditation' },
-  { threshold: 0.65, label: 'sunday morning' },
-  { threshold: 0.50, label: 'sleep-deprived intern' },
-  { threshold: 0.35, label: 'too much coffee' },
-  { threshold: 0.20, label: 'toddler on sugar' },
-  { threshold: 0.08, label: 'house fire' },
-  { threshold: 0.00, label: 'full system failure' },
+  { threshold: 0.95, label: 'unbothered. moisturized.' },
+  { threshold: 0.80, label: 'you reading, question?' },
+  { threshold: 0.65, label: 'locked in' },
+  { threshold: 0.50, label: 'amaze amaze amaze' },
+  { threshold: 0.35, label: 'tweaking' },
+  { threshold: 0.20, label: 'crashing out' },
+  { threshold: 0.08, label: 'break stuff' },
+  { threshold: 0.00, label: 'damn, fumbled it' },
 ]
 
 // ── State ───────────────────────────────────────────────────

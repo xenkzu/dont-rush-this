@@ -25,7 +25,7 @@ export function initRenderer() {
     el.style.opacity = '0'
     el.style.pointerEvents = 'none'
   })
-  
+
   // Position canvas correctly
   canvas.style.position = 'fixed'
   canvas.style.top = '0'
@@ -43,15 +43,15 @@ export function initRenderer() {
 function resize() {
   // Cap DPR at 2 — above 2 gives no visible benefit but doubles pixel count
   dpr = Math.min(window.devicePixelRatio || 1, 2)
-  width  = window.innerWidth
+  width = window.innerWidth
   height = window.innerHeight
 
   // Physical pixel dimensions
-  canvas.width  = Math.round(width  * dpr)
+  canvas.width = Math.round(width * dpr)
   canvas.height = Math.round(height * dpr)
 
   // CSS dimensions stay logical
-  canvas.style.width  = width  + 'px'
+  canvas.style.width = width + 'px'
   canvas.style.height = height + 'px'
 }
 
@@ -93,9 +93,10 @@ function drawFrame(timestamp) {
     if (word.isPhysics) continue
     const screenY = word.y - scrollY
     if (screenY + word.lineHeight < -100 || screenY > height + 100) continue
-    ctx.font      = word.fontString
+    ctx.font = word.fontString
     ctx.fillStyle = word.color
-    ctx.fillText(word.text, word.x, screenY + word.lineHeight * 0.8)
+    // 0.76 multiplier aligns 'Instrument Serif' and 'Syne' with DOM baseline
+    ctx.fillText(word.text, word.x, screenY + word.lineHeight * 0.6)
   }
 
   // 2. Draw physics words separately with transforms
@@ -107,11 +108,11 @@ function drawFrame(timestamp) {
     // Skip sleeping bodies that are settled or off screen
     const isSleeping = word.body?.isSleeping
     if (isSleeping) {
-       // Culling: off screen or at the bottom floor
-       if (pos.y > height - 10 || pos.y < -20) continue
+      // Culling: off screen or at the bottom floor
+      if (pos.y > height - 10 || pos.y < -20) continue
     } else {
-       // General cull: off screen
-       if (pos.y > height + 100 || pos.y < -100) continue
+      // General cull: off screen
+      if (pos.y > height + 100 || pos.y < -100) continue
     }
 
     ctx.save()
@@ -120,7 +121,8 @@ function drawFrame(timestamp) {
     ctx.font = word.fontString
     ctx.fillStyle = word.color
     ctx.textBaseline = 'alphabetic'
-    ctx.fillText(word.text, -word.width / 2, word.height * 0.6)
+    // Draw relative to body center — 0.33 offset matches the 0.76 global baseline
+    ctx.fillText(word.text, -word.width / 2, word.height * 0.33)
     ctx.restore()
   }
 }

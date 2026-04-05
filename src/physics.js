@@ -25,6 +25,19 @@ export function initPhysics() {
   console.log('[physics] Engine ready')
 }
 
+export function setRecoveryFloor(active) {
+  if (!floor) return
+  const W = window.innerWidth
+  const T = 60
+  if (active) {
+    // Move floor far below — words can travel thru it to off-screen homes
+    Body.setPosition(floor, { x: W / 2, y: 99999 })
+  } else {
+    // Restore floor to viewport bottom
+    Body.setPosition(floor, { x: W / 2, y: window.innerHeight + T / 2 })
+  }
+}
+
 function rebuildBoundaries() {
   if (floor) World.remove(world, [floor, wallL, wallR])
 
@@ -104,6 +117,7 @@ export function getBodyScreenPos(word, scrollY) {
 let cursorX = -9999
 let cursorY = -9999
 let lastCursorMoveTime = 0
+let lastInterferenceTime = 0
 let recoveryMode = false
 
 const CURSOR_RADIUS = 80   // px — wider repulsion field radius
@@ -111,7 +125,9 @@ const CURSOR_STRENGTH = 0.5  // force magnitude
 
 export function setRecoveryMode(active) { recoveryMode = active }
 export function isCursorIdle() {
-  return (performance.now() - lastCursorMoveTime) > 1200
+  // We've replaced 'Global Mouse Idle' with 'Local Interference Deadzone'
+  // True if the cursor hasn't touched the 'aura' of a word for 400ms
+  return (performance.now() - lastInterferenceTime) > 400
 }
 
 // Track cursor position globally
@@ -150,6 +166,9 @@ export function applyCursorForce(wordRegistry) {
 
     const nx = dx / dist
     const ny = dy / dist
+
+    // User is actively interfering with this word's aura
+    lastInterferenceTime = performance.now()
 
     Body.applyForce(word.body, pos, {
       x: nx * strength,
