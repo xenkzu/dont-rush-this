@@ -1121,12 +1121,13 @@
       </div>
       <script>
             (function () {
-              const wrap = document.getElementById('lissajous-wrap')
+              const wrap   = document.getElementById('lissajous-wrap')
               const canvas = document.getElementById('lissajous-canvas')
-              const cur = document.getElementById('lissajous-cursor')
-              const lbl = document.getElementById('lissajous-label')
-              const ctx = canvas.getContext('2d')
+              const cur    = document.getElementById('lissajous-cursor')
+              const lbl    = document.getElementById('lissajous-label')
+              const ctx    = canvas.getContext('2d')
               let W, H, dpr
+
               function resize() {
                 dpr = Math.min(window.devicePixelRatio || 1, 2); W = wrap.clientWidth; H = wrap.clientHeight
                 canvas.width = W * dpr; canvas.height = H * dpr
@@ -1135,9 +1136,9 @@
               }
               function drawCorners(ctx, W, H, a) {
                 const L = 14, P = 12; ctx.strokeStyle = `rgba(200,240,96,${a * 0.35})`; ctx.lineWidth = 1
-                  ;[[P, P, 1, 1], [P, H - P, 1, -1], [W - P, H - P, -1, -1]].forEach(([x, y, dx, dy]) => {
-                    ctx.beginPath(); ctx.moveTo(x, y); ctx.lineTo(x + dx * L, y); ctx.moveTo(x, y); ctx.lineTo(x, y + dy * L); ctx.stroke()
-                  })
+                ;[[P, P, 1, 1], [P, H - P, 1, -1], [W - P, H - P, -1, -1]].forEach(([x, y, dx, dy]) => {
+                  ctx.beginPath(); ctx.moveTo(x, y); ctx.lineTo(x + dx * L, y); ctx.moveTo(x, y); ctx.lineTo(x, y + dy * L); ctx.stroke()
+                })
               }
               function drawGrid(ctx, W, H, a) {
                 ctx.strokeStyle = `rgba(255,255,255,${a * 0.03})`; ctx.lineWidth = 1
@@ -1158,7 +1159,11 @@
                 lines.forEach((line, i) => { ctx.fillText(line, W - 14, 14 + i * 12) })
                 ctx.textAlign = 'left'
               }
+
               let fxt = 1, fyt = 1, fx = 1, fy = 1, ph = 0, inside = false, autoT = 0
+              const trail = [], LEN = 200
+              function spring(a, b, t) { return a + (b - a) * t }
+
               wrap.addEventListener('mouseenter', () => { inside = true; cur.style.opacity = '1' })
               wrap.addEventListener('mouseleave', () => { inside = false; cur.style.opacity = '0' })
               wrap.addEventListener('mousemove', e => {
@@ -1166,6 +1171,10 @@
                 cur.style.left = mx + 'px'; cur.style.top = my + 'px'
                 fxt = 1 + (mx / W) * 4; fyt = 1 + (my / H) * 4
               })
+
+              let running = false; const obs = new IntersectionObserver(e => {
+                running = e[0].isIntersecting; if (running) requestAnimationFrame(draw)
+              }, { threshold: 0.1 }); obs.observe(wrap)
 
               function draw(ts) {
                 if (!running) return;
