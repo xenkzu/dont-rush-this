@@ -1183,7 +1183,11 @@
                   autoT += 0.003; fxt = 1.5 + Math.cos(autoT) * 0.5; fyt = 2 + Math.sin(autoT * 0.7) * 1.2
                 }
                 drawVignette(ctx, W, H); drawGrid(ctx, W, H, 1); drawScanline(ctx, W, H, t); drawCorners(ctx, W, H, 1)
-                fx = spring(fx, fxt, 0.03); fy = spring(fy, fyt, 0.03); ph += 0.012
+                fx = spring(fx, fxt, 0.03); fy = spring(fy, fyt, 0.03); 
+                
+                // Normalize speed: complexity shouldn't mean franticness
+                ph += 0.015 / Math.max(fx, fy)
+                
                 const ampX = W * 0.38, ampY = H * 0.38, px = W / 2 + ampX * Math.sin(fx * ph + Math.PI / 2), py = H / 2 + ampY * Math.sin(fy * ph)
                 trail.push({ x: px, y: py }); if (trail.length > LEN) trail.shift()
                 for (let i = 1; i < trail.length; i++) {
@@ -1192,7 +1196,7 @@
                   ctx.strokeStyle = `rgba(200,240,96,${alpha})`; ctx.lineWidth = 1.2; ctx.stroke()
                 }
                 ctx.beginPath(); ctx.arc(px, py, 2.5, 0, Math.PI * 2); ctx.fillStyle = '#c8f060'; ctx.fill()
-                drawEquation(ctx, W, ['x = A sin(ω₁t + φ)', 'y = B sin(ω₂t)', `ω₁ ${fx.toFixed(2)}`, `ω₂ ${fy.toFixed(2)}`])
+                drawEquation(ctx, W, ['x = A sin(ω₁t + φ)', 'y = B sin(ω₂t)', `ω₁ ${fx.toFixed(2)}`, `ω₂ ${fy.toFixed(2)}` ])
                 lbl.textContent = `fx:${fx.toFixed(2)} fy:${fy.toFixed(2)}`
                 requestAnimationFrame(draw)
               }
