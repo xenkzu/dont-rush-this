@@ -31,8 +31,8 @@ function setGhostMode(body, isGhost) {
 }
 
 // ── Thresholds ─────────────────────────────────────────────
-const CALM_THRESHOLD   = 0.55   // was 0.45 — trigger specifically at dead body level
-const CALM_DURATION_MS = 1000   // was 1500 — appear 1s after reaching dead body state
+const CALM_THRESHOLD   = 0.95   // exactly matches HUD's 'dead body' threshold
+const CALM_DURATION_MS = 0      // appear IMMEDIATELY upon reaching dead body state
 const LOCK_DISTANCE    = 0.8   // was 3.5 — only snap when nearly pixel-perfect
 const LOCK_VELOCITY    = 0.3   // was 1.2 — only snap when almost completely still
 
