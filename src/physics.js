@@ -10,12 +10,13 @@ let floor, wallL, wallR
 
 export function initPhysics() {
   engine = Engine.create({
-    gravity: { x: 0, y: 1.2 },
-    positionIterations: 4,   // default 6 — reduce for perf
-    velocityIterations: 3,   // default 4 — reduce for perf
-    constraintIterations: 1  // default 2 — reduce for perf
+    gravity: { x: 0, y: 1.2 },  // was 1.2 — slower fall = fewer collision spikes
+    enableSleeping: true,       // bodies that stop moving go dormant
+    positionIterations: 4,
+    velocityIterations: 3,
+    constraintIterations: 1
   })
-  world  = engine.world
+  world = engine.world
 
   rebuildBoundaries()
   window.addEventListener('resize', rebuildBoundaries)
@@ -56,10 +57,12 @@ export function detachWord(word, scrollY, inheritVelocity = { x: 0, y: 0 }) {
   const screenY = word.y - scrollY + word.height / 2
 
   const body = Bodies.rectangle(screenX, screenY, word.width, word.height, {
-    restitution: 0.3,
-    friction: 0.6,
-    frictionAir: 0.01,
-    density: 0.002,
+    restitution: 0.0,       // was 0.3 — zero bounce, words thud and stay
+    friction: 0.8,          // was 0.6 — more friction, settle faster
+    frictionAir: 0.04,      // was 0.01 — more air resistance, slower fall
+    frictionStatic: 0.9,    // high static friction — stacked words don't slide
+    density: 0.003,         // slightly heavier — less affected by collisions
+    sleepThreshold: 30,    // frames of low velocity before sleeping
     label: word.id,
     collisionFilter: {
       category: 0x0001,
@@ -74,9 +77,9 @@ export function detachWord(word, scrollY, inheritVelocity = { x: 0, y: 0 }) {
   })
 
   World.add(world, body)
-  word.body  = body
+  word.body = body
   word.isPhysics = true
-  word.locked    = false
+  word.locked = false
 
   return body
 }
@@ -97,8 +100,66 @@ export function getBodyScreenPos(word, scrollY) {
   }
 }
 
+// Cursor state
+let cursorX = -9999
+let cursorY = -9999
+let lastCursorMoveTime = 0
+let recoveryMode = false
+
+const CURSOR_RADIUS = 80   // px — wider repulsion field radius
+const CURSOR_STRENGTH = 0.5  // force magnitude
+
+export function setRecoveryMode(active) { recoveryMode = active }
+export function isCursorIdle() {
+  return (performance.now() - lastCursorMoveTime) > 1200
+}
+
+// Track cursor position globally
+window.addEventListener('mousemove', e => {
+  cursorX = e.clientX
+  cursorY = e.clientY
+  lastCursorMoveTime = performance.now()
+})
+
+window.addEventListener('mouseleave', () => {
+  cursorX = -9999
+  cursorY = -9999
+})
+
+export function applyCursorForce(wordRegistry) {
+  if (cursorX === -9999 || recoveryMode) return
+
+  for (const word of wordRegistry) {
+    if (!word.isPhysics || !word.body) continue
+
+    const pos = word.body.position
+    const dx = pos.x - cursorX
+    const dy = pos.y - cursorY
+    const dist = Math.sqrt(dx * dx + dy * dy)
+
+    if (dist > CURSOR_RADIUS || dist < 0.1) continue
+
+    // Wake sleeping body if cursor enters its space
+    if (word.body.isSleeping) {
+      Matter.Sleeping.set(word.body, false)
+    }
+
+    // Repulsion force — stronger when closer, quadratic falloff
+    const normalizedDist = dist / CURSOR_RADIUS
+    const strength = CURSOR_STRENGTH * Math.pow(1 - normalizedDist, 2)
+
+    const nx = dx / dist
+    const ny = dy / dist
+
+    Body.applyForce(word.body, pos, {
+      x: nx * strength,
+      y: ny * strength
+    })
+  }
+}
+
 export function getEngine() { return engine }
-export function getWorld()  { return world  }
+export function getWorld() { return world }
 export function physicsReady() { return isReady }
 
 export function pruneOffscreenBodies(wordRegistry) {
@@ -107,9 +168,9 @@ export function pruneOffscreenBodies(wordRegistry) {
     if (!word.isPhysics || !word.body) continue
     if (word.body.position.y > H + 200) {
       World.remove(world, word.body)
-      word.body      = null
+      word.body = null
       word.isPhysics = false
-      word.locked    = true
+      word.locked = true
     }
   }
 }

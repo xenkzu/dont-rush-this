@@ -2,7 +2,7 @@
 
 import { getWordRegistry } from './pretext-bridge.js'
 import { getStabilityIndex } from './stability.js'
-import { getWorld } from './physics.js'
+import { getWorld, setRecoveryMode, isCursorIdle } from './physics.js'
 
 // We assume Matter is globally available via index.html script tag
 const { Body, World } = Matter
@@ -48,6 +48,7 @@ let lastRecoveryScrollY = 0      // tracks delta to shift physics items
 // ── DOM refs ───────────────────────────────────────────────
 const getDialog   = () => document.getElementById('recovery-dialog')
 const getBackdrop = () => getDialog()?.querySelector('div')
+const getOverlay  = () => document.getElementById('recovery-overlay')
 const getBox      = () => document.getElementById('recovery-box')
 const getYesBtn   = () => document.getElementById('recovery-yes')
 const getNoBtn    = () => document.getElementById('recovery-no')
@@ -63,6 +64,7 @@ function attachEvents() {
     hideDialog()
     recoveryGranted = true
     recoveryActive  = true
+    setRecoveryMode(true)
 
     const words = getWordRegistry()
     const scrollY = window.scrollY
@@ -71,17 +73,18 @@ function attachEvents() {
       if (!word.isPhysics || !word.body) continue
       setGhostMode(word.body, true)
 
-      // Initial kick toward target
+      // Initial gentle nudge toward target — never rocket
       const targetX = word.x + word.width / 2
       const targetY = word.y - scrollY + word.lineHeight * 0.5
       const dx = targetX - word.body.position.x
       const dy = targetY - word.body.position.y
-      const dist = Math.sqrt(dx * dx + dy * dy)
-      const speed = Math.min(dist * 0.18, 28)
-      const nx = dx / (dist || 1)
-      const ny = dy / (dist || 1)
+      const dist = Math.sqrt(dx * dx + dy * dy) || 1
+      
+      const kickSpeed = Math.min(dist * 0.10, 12)
+      const nx = dx / dist
+      const ny = dy / dist
 
-      Body.setVelocity(word.body, { x: nx * speed, y: ny * speed })
+      Body.setVelocity(word.body, { x: nx * kickSpeed, y: ny * kickSpeed })
     }
 
     lastRecoveryScrollY = window.scrollY
@@ -116,6 +119,7 @@ function attachEvents() {
     hideDialog()
     recoveryGranted = false
     recoveryActive  = false
+    setRecoveryMode(false)
     calmSince = null
   })
 
@@ -131,6 +135,7 @@ function showDialog() {
   dialogVisible = true
   
   const backdrop = getBackdrop()
+  const overlay  = getOverlay()
   const box      = getBox()
   const dialog   = getDialog()
   
@@ -139,35 +144,50 @@ function showDialog() {
     dialog.style.opacity = '1'
   }
   
-  if (backdrop) backdrop.style.opacity = '1'
-  
+  // Dark overlay fades in first — immediately
+  if (overlay) overlay.style.opacity = '1'
+
+  // Blur layer fades in slightly behind
+  setTimeout(() => {
+    if (backdrop) backdrop.style.opacity = '1'
+  }, 80)
+
+  // Box appears after dark layer is mostly settled
   setTimeout(() => {
     if (box) {
       box.style.opacity = '1'
       box.style.transform = 'translateY(0)'
     }
-  }, 350)
+  }, 320)
 }
 
 function hideDialog() {
   dialogVisible = false
   const backdrop = getBackdrop()
+  const overlay  = getOverlay()
   const box      = getBox()
   const dialog   = getDialog()
   
   if (dialog) {
     dialog.style.pointerEvents = 'none'
-    dialog.style.opacity = '0'
   }
   
+  // Box exits first
   if (box) {
     box.style.opacity = '0'
-    box.style.transform = 'translateY(12px)'
+    box.style.transform = 'translateY(40px)'
   }
   
+  // Then overlay and blur lift together
   setTimeout(() => {
     if (backdrop) backdrop.style.opacity = '0'
-  }, 250)
+    if (overlay) overlay.style.opacity = '0'
+  }, 280)
+
+  // Parent fades last
+  setTimeout(() => {
+    if (dialog) dialog.style.opacity = '0'
+  }, 600)
 }
 
 // ── Main update ────────────────────────────────────────────
@@ -208,8 +228,8 @@ export function updateRecovery(timestamp, scrollY) {
     }
     
     const calmDuration = timestamp - calmSince
-    if (calmDuration >= CALM_DURATION_MS && !dialogVisible && !recoveryGranted) {
-      console.log('[recovery] Calm duration threshold met. Showing dialog.')
+    if (calmDuration >= CALM_DURATION_MS && !dialogVisible && !recoveryGranted && isCursorIdle()) {
+      console.log('[recovery] Calm duration + Cursor idle threshold met. Showing dialog.')
       showDialog()
     }
   } else if (si < 0.18) {
@@ -244,8 +264,9 @@ export function updateRecovery(timestamp, scrollY) {
     const dist   = Math.sqrt(dx * dx + dy * dy)
     const speed  = Math.sqrt(vel.x * vel.x + vel.y * vel.y)
 
-    // Snap only when truly home
-    if (dist < LOCK_DISTANCE && speed < LOCK_VELOCITY) {
+    // Only attempt lock if target is near viewport
+    const isOffScreen = targetY < -300 || targetY > window.innerHeight + 300
+    if (!isOffScreen && dist < LOCK_DISTANCE && speed < LOCK_VELOCITY) {
       Body.setPosition(word.body, { x: targetX, y: targetY })
       Body.setAngle(word.body, 0)
       World.remove(world, word.body)
@@ -303,6 +324,7 @@ export function updateRecovery(timestamp, scrollY) {
     anyWordDetached  = false
     calmSince        = null
     recoveryComplete = true
+    setRecoveryMode(false)
     console.log('[recovery] Complete.')
   }
 }

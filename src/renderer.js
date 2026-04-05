@@ -1,7 +1,6 @@
-// renderer.js — canvas rendering engine
 import { getLineRegistry, getWordRegistry } from './pretext-bridge.js'
-import { stepPhysics, getBodyScreenPos, pruneOffscreenBodies } from './physics.js'
-import { updateRecovery } from './recovery.js'
+import { stepPhysics, getBodyScreenPos, pruneOffscreenBodies, applyCursorForce, setRecoveryMode } from './physics.js'
+import { updateRecovery, isRecoveringNow } from './recovery.js'
 
 let canvas, ctx, dpr, width, height
 let registry = []
@@ -42,7 +41,8 @@ export function initRenderer() {
 }
 
 function resize() {
-  dpr = window.devicePixelRatio || 1
+  // Cap DPR at 2 — above 2 gives no visible benefit but doubles pixel count
+  dpr = Math.min(window.devicePixelRatio || 1, 2)
   width  = window.innerWidth
   height = window.innerHeight
 
@@ -76,6 +76,8 @@ function drawFrame(timestamp) {
   frameCount++
 
   stepPhysics(delta)
+  setRecoveryMode(isRecoveringNow())
+  applyCursorForce(getWordRegistry())
   updateRecovery(timestamp, window.scrollY)
 
   // Crisp subpixel rendering
@@ -85,39 +87,41 @@ function drawFrame(timestamp) {
   const scrollY = window.scrollY
   const words = getWordRegistry()
 
+  // 1. Draw all locked words in one pass — no save/restore per word
+  ctx.textBaseline = 'alphabetic'
   for (const word of words) {
-    if (word.isPhysics) {
-      // Draw at physics body position
-      const pos = getBodyScreenPos(word, 0) // physics is in screen space
-      if (!pos) continue
+    if (word.isPhysics) continue
+    const screenY = word.y - scrollY
+    if (screenY + word.lineHeight < -100 || screenY > height + 100) continue
+    ctx.font      = word.fontString
+    ctx.fillStyle = word.color
+    ctx.fillText(word.text, word.x, screenY + word.lineHeight * 0.8)
+  }
 
-      // Cull bottom only
-      if (pos.y > height + 100) continue
+  // 2. Draw physics words separately with transforms
+  for (const word of words) {
+    if (!word.isPhysics) continue
+    const pos = getBodyScreenPos(word, 0)
+    if (!pos) continue
 
-      ctx.save()
-      ctx.translate(
-        pos.x + word.width / 2,
-        pos.y + word.height / 2
-      )
-      ctx.rotate(pos.angle || 0)
-      ctx.font = word.fontString
-      ctx.fillStyle = word.color
-      ctx.textBaseline = 'alphabetic'
-      ctx.fillText(word.text, -word.width / 2, word.height * 0.6)
-      ctx.restore()
-
+    // Skip sleeping bodies that are settled or off screen
+    const isSleeping = word.body?.isSleeping
+    if (isSleeping) {
+       // Culling: off screen or at the bottom floor
+       if (pos.y > height - 10 || pos.y < -20) continue
     } else {
-      // Locked word — draw at layout position
-      const screenY = word.y - scrollY
-      if (screenY + word.lineHeight < -100 || screenY > height + 100) continue
-
-      ctx.save()
-      ctx.font = word.fontString
-      ctx.fillStyle = word.color
-      ctx.textBaseline = 'alphabetic'
-      ctx.fillText(word.text, word.x, screenY + word.lineHeight * 0.8)
-      ctx.restore()
+       // General cull: off screen
+       if (pos.y > height + 100 || pos.y < -100) continue
     }
+
+    ctx.save()
+    ctx.translate(pos.x + word.width / 2, pos.y + word.height / 2)
+    ctx.rotate(pos.angle || 0)
+    ctx.font = word.fontString
+    ctx.fillStyle = word.color
+    ctx.textBaseline = 'alphabetic'
+    ctx.fillText(word.text, -word.width / 2, word.height * 0.6)
+    ctx.restore()
   }
 }
 

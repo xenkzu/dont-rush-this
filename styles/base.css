@@ -490,8 +490,8 @@ pre code {
 .step {
   display: flex;
   align-items: flex-start;
-  gap: 1.2rem;
-  padding: 2.5rem 2.25rem;
+  gap: 1.5rem;
+  padding: 2.25rem 2.25rem 4rem 2.25rem;
   border-bottom: 1px solid var(--border);
   transition: background 0.2s;
 }
@@ -611,4 +611,15 @@ footer {
 
 .canvas-managed {
   visibility: visible;
+}
+
+/* Text selection — accent green */
+::selection {
+  background: var(--accent);
+  color: #0c0c0c;
+}
+
+::-moz-selection {
+  background: var(--accent);
+  color: #0c0c0c;
 }
