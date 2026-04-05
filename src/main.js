@@ -115,41 +115,34 @@ function dismissPreloader() {
     setTimeout(() => {
       preloader.style.display = 'none'
       resolve()
-    }, 1000)
+    }, 2200)
   })
 }
 
 // ── Onboarding hint ────────────────────────────────────────
 function showHintAfterDelay() {
-  // Only show once per session
-  if (sessionStorage.getItem('hint-shown')) return
-
   setTimeout(() => {
     if (!hint) return
-    hint.style.opacity = '1'
+    hint.style.opacity   = '1'
+    hint.style.transform = 'translateY(0)'
 
     setTimeout(() => {
-      hint.style.opacity = '0'
-      sessionStorage.setItem('hint-shown', '1')
+      hint.style.opacity   = '0'
+      hint.style.transform = 'translateY(100%)'
     }, 4000)
-  }, 6000)
+  }, 4000)
 }
 
 // ── Boot ───────────────────────────────────────────────────
 async function boot() {
-  // Skip preloader if already seen this session
-  const seen = sessionStorage.getItem('preloader-shown')
-
-  if (!seen) {
-    // Animate text in after short delay
-    setTimeout(() => {
-      if (preloaderText) {
-        preloaderText.style.opacity   = '1'
-        preloaderText.style.transform = 'translateY(0)'
-      }
-      if (preloaderSub) preloaderSub.style.opacity = '1'
-    }, 300)
-  }
+  // Animate text in after short delay
+  setTimeout(() => {
+    if (preloaderText) {
+      preloaderText.style.opacity   = '1'
+      preloaderText.style.transform = 'translateY(0)'
+    }
+    if (preloaderSub) preloaderSub.style.opacity = '1'
+  }, 300)
 
   const bootStart = performance.now()
 
@@ -171,13 +164,12 @@ async function boot() {
   // ── Minimum display time ───────────────────────────────
   // Preloader shows for at least 2800ms so text is readable
   const elapsed = performance.now() - bootStart
-  const minTime = seen ? 0 : 2800
+  const minTime = 2800
   const remaining = Math.max(0, minTime - elapsed)
 
   await new Promise(r => setTimeout(r, remaining))
 
   setProgress(100, 'ready')
-  sessionStorage.setItem('preloader-shown', '1')
 
   await dismissPreloader()
 

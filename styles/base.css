@@ -623,3 +623,7 @@ footer {
   background: var(--accent);
   color: #0c0c0c;
 }
+@keyframes hint-bounce {
+  0%, 100% { transform: translateY(0px); }
+  50% { transform: translateY(6px); }
+}
